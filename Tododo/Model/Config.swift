@@ -15,6 +15,15 @@ struct Config: Equatable {
            let dict = NSDictionary(contentsOf: path) {
             return make(dict["ServerURL"] as? String, dict["AppToken"] as? String)
         }
+        #if os(macOS)
+        // A settings file lying next to Tododo.app: read once and remembered.
+        let side = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("Tododo-Secrets.plist")
+        if let dict = NSDictionary(contentsOf: side),
+           let c = make(dict["ServerURL"] as? String, dict["AppToken"] as? String) {
+            save(url: c.url.absoluteString, token: c.token)
+            return c
+        }
+        #endif
         return nil
     }
 

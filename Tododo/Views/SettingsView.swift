@@ -12,6 +12,9 @@ struct SettingsView: View {
             Form {
                 Section {
                     LabeledContent("Состояние", value: statusText)
+                    if store.pendingCount > 0 {
+                        LabeledContent("Ждут отправки", value: "\(store.pendingCount)")
+                    }
                     Button("Синхронизировать сейчас") {
                         Task { await store.sync() }
                     }
@@ -35,7 +38,18 @@ struct SettingsView: View {
                     }
                     .disabled(url.isEmpty || token.isEmpty)
                 }
+
+                Section {
+                    ShareLink(item: Store.fileURL) {
+                        Label("Экспортировать все данные", systemImage: "square.and.arrow.up")
+                    }
+                } header: {
+                    Text("Резервные копии")
+                } footer: {
+                    Text("Копия данных сохраняется на устройстве каждый день (30 дней) и на сервере (90 дней). Удалённое можно вернуть через Claude.")
+                }
             }
+            .formStyle(.grouped)
             .navigationTitle("Настройки")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -43,7 +57,11 @@ struct SettingsView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 460, minHeight: 520)
+        #endif
         .onAppear {
+            store.flush()
             if let c = Config.current {
                 url = c.url.absoluteString
                 token = c.token

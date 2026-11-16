@@ -1,6 +1,10 @@
 import Foundation
+import Network
 import Observation
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// The whole app state lives in memory and is mirrored to one JSON file.
 /// Every screen reads from here, so the UI never waits on disk or network.
@@ -14,6 +18,8 @@ final class Store {
     private(set) var syncStatus: SyncStatus = .idle
     /// Bumps when a task is completed, to drive haptics.
     private(set) var doneTick = 0
+    /// Changes made on this device that the server has not confirmed yet.
+    private(set) var pendingCount = 0
 
     @ObservationIgnored private var dirty: Set<String> = []
     @ObservationIgnored private var cursor = 0
@@ -22,6 +28,12 @@ final class Store {
     @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var isSyncing = false
     @ObservationIgnored private var syncAgain = false
+    /// Server clock minus device clock (ms): keeps timestamps comparable across devices.
+    @ObservationIgnored private var clockOffset: Double = 0
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
+    @ObservationIgnored private var retryDelay: Double = 3
+    @ObservationIgnored private var fastPollUntil = Date.distantPast
+    @ObservationIgnored private let monitor = NWPathMonitor()
     @ObservationIgnored private let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
 
     init() {
@@ -32,6 +44,8 @@ final class Store {
         }
         #endif
         load()
+        pendingCount = dirty.count
+        startNetworkMonitor()
     }
 
     #if DEBUG
@@ -61,7 +75,7 @@ final class Store {
         _ = add(.task) { $0.title = "Подумать"; $0.isSection = true; $0.myDay = true }
         _ = add(.task) { $0.title = "Идея для онбординга"; $0.myDay = true; $0.listId = work }
         _ = add(.task) { $0.title = "Куда поехать в январе"; $0.myDay = true }
-        _ = add(.task) { $0.title = "Заказать воду"; $0.myDay = true; $0.completed = true; $0.completedAt = Self.now }
+        _ = add(.task) { $0.title = "Заказать воду"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
         _ = add(.task) { $0.title = "Молоко"; $0.listId = "demo-4" }
     }
     #endif
@@ -182,13 +196,20 @@ final class Store {
 
     // MARK: - Mutations
 
-    private static var now: Double { (Date().timeIntervalSince1970 * 1000).rounded() }
+    private var now: Double { (Date().timeIntervalSince1970 * 1000 + clockOffset).rounded() }
 
     private func commit(_ record: Record) {
         var r = record
-        r.updatedAt = max(Self.now, (records[r.id]?.updatedAt ?? 0) + 1)
+        let old = records[r.id]
+        let stamp = max(now, (old?.updatedAt ?? 0) + 1)
+        var ft = old?.ft ?? [:]
+        for field in r.data.changedFields(from: old?.data ?? Payload()) { ft[field] = stamp }
+        r.ft = ft
+        r.updatedAt = stamp
         records[r.id] = r
         dirty.insert(r.id)
+        pendingCount = dirty.count
+        fastPollUntil = Date().addingTimeInterval(90)
         scheduleSave()
         scheduleSync()
     }
@@ -233,7 +254,7 @@ final class Store {
         var d = Payload()
         d.title = title
         d.listId = listID
-        d.createdAt = Self.now
+        d.createdAt = now
         d.position = nextPosition(all.filter { self.listID(of: $0) == listID })
         if isSection { d.isSection = true }
         if scope == .myDay {
@@ -249,7 +270,7 @@ final class Store {
         let done = !r.isDone
         update(id) {
             $0.completed = done ? true : nil
-            $0.completedAt = done ? Self.now : nil
+            $0.completedAt = done ? now : nil
         }
         if done { doneTick += 1 }
     }
@@ -392,18 +413,67 @@ final class Store {
         var dirty: [String]
         var cursor: Int
         var epoch: String?
+        var clockOffset: Double?
     }
 
-    private static var fileURL: URL {
+    private static var directory: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Tododo", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("state.json")
+        return dir
+    }
+
+    static var fileURL: URL { directory.appendingPathComponent("state.json") }
+
+    private static var backupsURL: URL {
+        let dir = directory.appendingPathComponent("Backups", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private static func readSnapshot(_ url: URL) -> Snapshot? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Snapshot.self, from: data)
+    }
+
+    /// Local safety net: one copy of the state file per day, 30 days deep.
+    private func backupIfNeeded() {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: Self.fileURL.path) else { return }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        let target = Self.backupsURL.appendingPathComponent("state-\(f.string(from: Date())).json")
+        guard !fm.fileExists(atPath: target.path) else { return }
+        try? fm.copyItem(at: Self.fileURL, to: target)
+        let all = ((try? fm.contentsOfDirectory(at: Self.backupsURL, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.lastPathComponent.hasPrefix("state-") }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
+        all.dropFirst(30).forEach { try? fm.removeItem(at: $0) }
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: Self.fileURL),
-              let snap = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+        let fm = FileManager.default
+        var loaded = Self.readSnapshot(Self.fileURL)
+        if loaded == nil, fm.fileExists(atPath: Self.fileURL.path) {
+            // The state file is unreadable: set it aside and fall back to the newest daily copy.
+            let aside = Self.directory.appendingPathComponent("state-unreadable-\(Int(Date().timeIntervalSince1970)).json")
+            try? fm.moveItem(at: Self.fileURL, to: aside)
+        }
+        if loaded == nil {
+            let copies = ((try? fm.contentsOfDirectory(at: Self.backupsURL, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.lastPathComponent.hasPrefix("state-") }
+                .sorted { $0.lastPathComponent > $1.lastPathComponent }
+            for copy in copies {
+                if let snap = Self.readSnapshot(copy) {
+                    loaded = snap
+                    break
+                }
+            }
+        }
+        backupIfNeeded()
+        guard let snap = loaded else { return }
+        clockOffset = snap.clockOffset ?? 0
         records = Dictionary(snap.records.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         dirty = Set(snap.dirty)
         cursor = snap.cursor
@@ -411,7 +481,7 @@ final class Store {
     }
 
     private func snapshotData() -> Data? {
-        try? JSONEncoder().encode(Snapshot(records: Array(records.values), dirty: Array(dirty), cursor: cursor, epoch: epoch))
+        try? JSONEncoder().encode(Snapshot(records: Array(records.values), dirty: Array(dirty), cursor: cursor, epoch: epoch, clockOffset: clockOffset))
     }
 
     private func scheduleSave() {
@@ -430,6 +500,7 @@ final class Store {
         if isDemo { return }
         saveTask?.cancel()
         if let data = snapshotData() { try? data.write(to: Self.fileURL, options: .atomic) }
+        backupIfNeeded()
     }
 
     // MARK: - Sync
@@ -443,7 +514,62 @@ final class Store {
     private struct SyncResponse: Decodable {
         let epoch: String
         let cursor: Int
+        let now: Double?
         let changes: [Record]
+    }
+
+    /// The moment the network comes back (out of a plane, a tunnel), push and pull right away.
+    private func startNetworkMonitor() {
+        if isDemo { return }
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard path.status == .satisfied else { return }
+            Task { @MainActor in
+                self?.retryDelay = 3
+                await self?.sync()
+            }
+        }
+        monitor.start(queue: DispatchQueue(label: "tododo.network"))
+    }
+
+    /// While something is unsent and the server is unreachable, keep trying: 3s, 6s, 12s … up to a minute.
+    private func scheduleRetry() {
+        retryTask?.cancel()
+        let delay = retryDelay
+        retryDelay = min(retryDelay * 2, 60)
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            await self?.sync()
+        }
+    }
+
+    /// Call when the app comes to the front: sync now and poll quickly for a while.
+    func becameActive() {
+        fastPollUntil = Date().addingTimeInterval(90)
+        Task { await sync() }
+    }
+
+    /// Call when the app leaves the front: save, and on iOS finish sending pending changes.
+    func resignedActive() {
+        flush()
+        #if os(iOS)
+        guard !dirty.isEmpty, !isDemo else { return }
+        final class Box { var id = UIBackgroundTaskIdentifier.invalid }
+        let app = UIApplication.shared
+        let box = Box()
+        box.id = app.beginBackgroundTask(withName: "tododo.sync") {
+            app.endBackgroundTask(box.id)
+            box.id = .invalid
+        }
+        Task {
+            await self.sync()
+            self.flush()
+            if box.id != .invalid {
+                app.endBackgroundTask(box.id)
+                box.id = .invalid
+            }
+        }
+        #endif
     }
 
     private func scheduleSync() {
@@ -459,7 +585,8 @@ final class Store {
     func runSyncLoop() async {
         while !Task.isCancelled {
             await sync()
-            try? await Task.sleep(for: .seconds(15))
+            // Quick polling right after activity (so the other device shows up within seconds), relaxed otherwise.
+            try? await Task.sleep(for: .seconds(Date() < fastPollUntil ? 4 : 20))
         }
     }
 
@@ -494,8 +621,11 @@ final class Store {
                 let decoded = try JSONDecoder().decode(SyncResponse.self, from: data)
                 apply(decoded, pushed: pushing)
                 syncStatus = .ok(Date())
+                retryDelay = 3
+                retryTask?.cancel()
             } catch {
                 syncStatus = .offline
+                if !dirty.isEmpty { scheduleRetry() }
                 return
             }
         } while (syncAgain || !dirty.isEmpty) && rounds < 5
@@ -509,9 +639,15 @@ final class Store {
             if p.deleted { next[p.id] = nil }
         }
         for change in response.changes {
-            if let local = next[change.id], dirty.contains(change.id), local.updatedAt > change.updatedAt { continue }
-            dirty.remove(change.id)
+            // Edited here since the last push: keep ours. The next push merges both sides
+            // on the server field by field, and the merged version comes back.
+            if dirty.contains(change.id) { continue }
             next[change.id] = change.deleted ? nil : change
+        }
+        if !response.changes.isEmpty { fastPollUntil = Date().addingTimeInterval(90) }
+        if let serverNow = response.now {
+            let offset = serverNow - Date().timeIntervalSince1970 * 1000
+            clockOffset = abs(offset) > 1500 ? offset : 0
         }
         if let old = epoch, old != response.epoch {
             // Server storage was recreated: send everything we have.
@@ -520,6 +656,7 @@ final class Store {
         epoch = response.epoch
         cursor = response.cursor
         if next != records { records = next }
+        pendingCount = dirty.count
         scheduleSave()
     }
 }

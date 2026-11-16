@@ -12,11 +12,12 @@ struct TododoApp: App {
                 .preferredColorScheme(.light)
                 .task { await store.runSyncLoop() }
         }
+        .defaultSize(width: 940, height: 660)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                Task { await store.sync() }
+                store.becameActive()
             } else {
-                store.flush()
+                store.resignedActive()
             }
         }
     }

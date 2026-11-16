@@ -21,12 +21,36 @@ struct Payload: Codable, Equatable {
     var createdAt: Double?
 }
 
+extension Payload {
+    /// Names (as in JSON) of the fields whose values differ from `old`.
+    func changedFields(from old: Payload) -> [String] {
+        var out: [String] = []
+        if name != old.name { out.append("name") }
+        if title != old.title { out.append("title") }
+        if groupId != old.groupId { out.append("groupId") }
+        if listId != old.listId { out.append("listId") }
+        if taskId != old.taskId { out.append("taskId") }
+        if position != old.position { out.append("position") }
+        if completed != old.completed { out.append("completed") }
+        if completedAt != old.completedAt { out.append("completedAt") }
+        if important != old.important { out.append("important") }
+        if myDay != old.myDay { out.append("myDay") }
+        if myDayPosition != old.myDayPosition { out.append("myDayPosition") }
+        if isSection != old.isSection { out.append("isSection") }
+        if createdAt != old.createdAt { out.append("createdAt") }
+        return out
+    }
+}
+
 struct Record: Codable, Equatable, Identifiable {
     var id: String
     var kind: Kind
     var data: Payload
-    var updatedAt: Double      // ms since 1970, drives last-write-wins sync
+    var updatedAt: Double      // ms since 1970
     var deleted: Bool
+    /// When each data field was last changed. The server merges records field by field,
+    /// so edits made on two devices to different fields of one task both survive.
+    var ft: [String: Double]? = nil
 
     var title: String { data.title ?? data.name ?? "" }
     var isDone: Bool { data.completed == true }

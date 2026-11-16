@@ -25,6 +25,9 @@ struct TaskDetailView: View {
             }
         }
         .presentationDetents([.medium, .large])
+        #if os(macOS)
+        .frame(minWidth: 440, minHeight: 480)
+        #endif
         .onAppear { title = store.record(taskID)?.title ?? "" }
         .onDisappear { store.rename(taskID, to: title) }
     }
@@ -106,6 +109,7 @@ struct TaskDetailView: View {
                 }
             }
         }
+        .formStyle(.grouped)
     }
 
     private func listBinding(_ task: Record) -> Binding<String> {

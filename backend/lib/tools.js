@@ -1,6 +1,6 @@
 // Domain logic behind the MCP tools. Operates on the shared state document.
 import { randomUUID } from 'node:crypto';
-import { setRecord } from './store.js';
+import { setRecord, listBackups, getBackup, backend } from './store.js';
 
 export const INBOX = '00000000-0000-0000-0000-000000000001';
 const INBOX_NAME = 'Задачи';
@@ -315,6 +315,70 @@ export const tools = [
       if (g !== undefined) patch.groupId = g;
       const rec = update(state, l, patch);
       return { id: rec.id, name: rec.data.name };
+    },
+  },
+  {
+    name: 'recover',
+    description: 'Safety net. Nothing is ever erased on the server: deleted tasks/lists stay recoverable, and a full snapshot is kept for each day with changes (90 days). action "list_deleted": recently deleted tasks and lists (days, default 30). "undelete": bring back items by ids (a list comes back with its tasks). "list_backups": available daily snapshots. "restore_backup": bring back everything from the snapshot of `day` (YYYY-MM-DD) that has since been deleted; with overwrite=true also revert items changed since then. Items created after the snapshot are never removed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list_deleted', 'undelete', 'list_backups', 'restore_backup'] },
+        days: { type: 'number' },
+        ids: { type: 'array', items: { type: 'string' } },
+        day: { type: 'string' },
+        overwrite: { type: 'boolean' },
+      },
+      required: ['action'],
+    },
+    async run(state, a) {
+      const all = Object.values(state.records);
+      const revive = (r, data = r.data) => {
+        const now = Math.max(Date.now(), r.updatedAt + 1);
+        const ft = Object.fromEntries([...Object.keys(r.data || {}), ...Object.keys(data)].map((k) => [k, now]));
+        return setRecord(state, r.id, r.kind, data, false, now, ft);
+      };
+      if (a.action === 'list_deleted') {
+        const since = Date.now() - (a.days ?? 30) * 86400000;
+        const gone = all.filter((r) => r.deleted && r.updatedAt >= since && (r.kind === 'task' || r.kind === 'list'))
+          .sort((x, y) => y.updatedAt - x.updatedAt).slice(0, 200);
+        return { deleted: gone.map((r) => ({ id: r.id, kind: r.kind, title: r.data.title ?? r.data.name, list: r.kind === 'task' ? listName(state, r.data.listId) : undefined, deleted_at: new Date(r.updatedAt).toISOString() })) };
+      }
+      if (a.action === 'undelete') {
+        const restored = [];
+        for (const id of a.ids || []) {
+          const r = state.records[id];
+          if (!r) fail(`Item ${id} not found`);
+          if (!r.deleted) continue;
+          revive(r);
+          restored.push(r.data.title ?? r.data.name);
+          const children = r.kind === 'list' ? all.filter((x) => x.kind === 'task' && x.data.listId === id && x.deleted && x.updatedAt >= r.updatedAt - 5000)
+            : r.kind === 'task' ? all.filter((x) => x.kind === 'step' && x.data.taskId === id && x.deleted && x.updatedAt >= r.updatedAt - 5000) : [];
+          for (const c of children) {
+            revive(c);
+            if (c.kind === 'task') all.filter((x) => x.kind === 'step' && x.data.taskId === c.id && x.deleted && x.updatedAt >= c.updatedAt - 5000).forEach((x) => revive(x));
+          }
+        }
+        return { restored };
+      }
+      if (a.action === 'list_backups') {
+        if (backend !== 'postgres') return { backups: [], note: 'Daily snapshots need the Postgres store.' };
+        return { backups: await listBackups() };
+      }
+      if (a.action === 'restore_backup') {
+        const snap = await getBackup(String(a.day ?? ''));
+        if (!snap) fail(`No backup for "${a.day}". Use action "list_backups".`);
+        let undeleted = 0, reverted = 0;
+        for (const old of Object.values(snap.records)) {
+          if (old.deleted) continue;
+          const cur = state.records[old.id];
+          if (!cur) { setRecord(state, old.id, old.kind, old.data, false, Date.now()); undeleted++; }
+          else if (cur.deleted) { revive(cur, old.data); undeleted++; }
+          else if (a.overwrite && JSON.stringify(cur.data) !== JSON.stringify(old.data)) { revive(cur, old.data); reverted++; }
+        }
+        return { day: a.day, brought_back: undeleted, reverted };
+      }
+      fail('Unknown action');
     },
   },
 ];

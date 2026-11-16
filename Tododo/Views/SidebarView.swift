@@ -45,8 +45,12 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        #if os(iOS)
         .scrollContentBackground(.hidden)
         .background(Color.white)
+        #else
+        .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+        #endif
         .navigationTitle("Tododo")
         .searchable(text: $query, prompt: "Поиск")
         .toolbar {
@@ -180,8 +184,8 @@ struct SidebarView: View {
     private var syncIcon: String {
         switch store.syncStatus {
         case .offline: return "icloud.slash"
-        case .notConfigured: return "gearshape"
-        default: return "gearshape"
+        case .notConfigured: return "exclamationmark.icloud"
+        default: return store.pendingCount > 0 ? "arrow.triangle.2.circlepath" : "gearshape"
         }
     }
 
