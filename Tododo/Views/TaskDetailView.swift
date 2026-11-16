@@ -48,7 +48,8 @@ struct TaskDetailView: View {
                             .foregroundStyle(task.isDone ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
                     }
                     .buttonStyle(.plain)
-                    TextField("Название", text: $title, axis: .vertical)
+                    TextField("Название", text: $title, prompt: Text("Название"), axis: .vertical)
+                        .labelsHidden()
                         .textFieldStyle(.plain)
                         .font(.title3.weight(.semibold))
                         .onSubmit { store.rename(taskID, to: title) }
@@ -75,7 +76,8 @@ struct TaskDetailView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "plus")
                         .foregroundStyle(.secondary)
-                    TextField("Следующий шаг", text: $newStep)
+                    TextField("Следующий шаг", text: $newStep, prompt: Text("Следующий шаг"))
+                        .labelsHidden()
                         .textFieldStyle(.plain)
                         .focused($stepFocused)
                         .submitLabel(.done)

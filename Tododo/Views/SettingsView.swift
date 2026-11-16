@@ -29,7 +29,8 @@ struct SettingsView: View {
                     if let host = connectedHost {
                         LabeledContent("Сервер", value: host)
                     }
-                    TextField("Код подключения", text: $setupCode)
+                    TextField("Код подключения", text: $setupCode, prompt: Text("Код подключения"))
+                        .labelsHidden()
                         .autocorrectionDisabled()
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
