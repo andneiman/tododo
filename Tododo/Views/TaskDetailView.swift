@@ -18,6 +18,10 @@ struct TaskDetailView: View {
                     ContentUnavailableView("Задача удалена", systemImage: "trash")
                 }
             }
+            .navigationTitle("Задача")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Готово") { dismiss() }

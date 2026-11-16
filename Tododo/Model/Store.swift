@@ -33,6 +33,8 @@ final class Store {
     @ObservationIgnored private var retryTask: Task<Void, Never>?
     @ObservationIgnored private var retryDelay: Double = 3
     @ObservationIgnored private var fastPollUntil = Date.distantPast
+    @ObservationIgnored private var lastActivity = Date()
+    @ObservationIgnored private var isFrontmost = true
     @ObservationIgnored private let monitor = NWPathMonitor()
     @ObservationIgnored private let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
     /// Scripted test mode: nothing syncs on its own, only when the script says so.
@@ -234,6 +236,7 @@ final class Store {
         dirty.insert(r.id)
         pendingCount = dirty.count
         fastPollUntil = Date().addingTimeInterval(90)
+        lastActivity = Date()
         scheduleSave()
         scheduleSync()
     }
@@ -574,12 +577,15 @@ final class Store {
     /// Call when the app comes to the front: sync now and poll quickly for a while.
     func becameActive() {
         if isManual { return }
+        isFrontmost = true
+        lastActivity = Date()
         fastPollUntil = Date().addingTimeInterval(90)
         Task { await sync() }
     }
 
     /// Call when the app leaves the front: save, and on iOS finish sending pending changes.
     func resignedActive() {
+        isFrontmost = false
         flush()
         #if os(iOS)
         guard !dirty.isEmpty, !isDemo else { return }
@@ -615,9 +621,16 @@ final class Store {
     func runSyncLoop() async {
         if isManual { return }
         while !Task.isCancelled {
+            // Not in front (a Mac window in the background): no polling, the next activation syncs at once.
+            guard isFrontmost else {
+                try? await Task.sleep(for: .seconds(3))
+                continue
+            }
             await sync()
-            // Quick polling right after activity (so the other device shows up within seconds), relaxed otherwise.
-            try? await Task.sleep(for: .seconds(Date() < fastPollUntil ? 4 : 20))
+            // Quick polling right after activity (so the other device shows up within seconds),
+            // relaxed when idle, slow when left open and untouched.
+            let idle = Date().timeIntervalSince(lastActivity)
+            try? await Task.sleep(for: .seconds(Date() < fastPollUntil ? 4 : (idle < 600 ? 20 : 60)))
         }
     }
 

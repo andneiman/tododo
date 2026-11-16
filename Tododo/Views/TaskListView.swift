@@ -56,6 +56,12 @@ struct TaskListView: View {
         .navigationTitle(store.title(of: scope))
         .safeAreaInset(edge: .bottom) { addBar }
         .refreshable { await store.sync() }
+        .background {
+            // ⌘N jumps to the "add task" field (Mac and hardware keyboards).
+            Button("Новая задача") { adding = true }
+                .keyboardShortcut("n", modifiers: .command)
+                .hidden()
+        }
         .sensoryFeedback(.success, trigger: store.doneTick)
         .sheet(item: $detail) { TaskDetailView(taskID: $0.id) }
         .alert("Отбивка", isPresented: renameShown, presenting: renaming) { ref in
