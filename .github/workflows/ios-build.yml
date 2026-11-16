@@ -30,7 +30,7 @@ jobs:
             xcrun simctl install "$2" build/Debug-iphonesimulator/Tododo.app
             for screen in home myday list detail settings search empty; do
               xcrun simctl terminate "$2" com.andneiman.tododo 2>/dev/null || true
-              xcrun simctl launch "$2" com.andneiman.tododo -demo -demo-screen $screen
+              xcrun simctl launch "$2" com.andneiman.tododo -demo YES -demoScreen $screen
               sleep 6
               xcrun simctl io "$2" screenshot "shots/$1-$screen.png"
             done
@@ -77,7 +77,7 @@ jobs:
             pkill -x Tododo 2>/dev/null || true
             sleep 1
             rm -rf ~/Library/Saved\ Application\ State/com.andneiman.tododo.savedState
-            open dd/Build/Products/Debug/Tododo.app --args -demo -demo-screen $screen -ApplePersistenceIgnoreState YES
+            open dd/Build/Products/Debug/Tododo.app --args -demo YES -demoScreen $screen -ApplePersistenceIgnoreState YES
             sleep 7
             screencapture -x "out/mac-$screen.png" || true
           done

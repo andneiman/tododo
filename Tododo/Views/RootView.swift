@@ -27,10 +27,10 @@ struct RootView: View {
         #endif
     }
 
-    /// `-demo-screen <name>` opens a given screen with sample data (used for automated screenshots).
+    /// `-demo YES -demoScreen <name>` opens a given screen with sample data (used for automated screenshots).
     static var demoScreen: String? {
         let args = ProcessInfo.processInfo.arguments
-        guard let i = args.firstIndex(of: "-demo-screen"), i + 1 < args.count else { return nil }
+        guard let i = args.firstIndex(of: "-demoScreen"), i + 1 < args.count else { return nil }
         return args[i + 1]
     }
 
