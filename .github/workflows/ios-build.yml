@@ -69,6 +69,22 @@ jobs:
       - name: Errors
         if: failure()
         run: grep -n -B2 -A6 "error:" build.log debug.log | head -200 || tail -80 debug.log
+      - name: Screenshots of every screen
+        if: always()
+        run: |
+          mkdir -p out
+          for screen in myday list detail settings search empty; do
+            pkill -x Tododo 2>/dev/null || true
+            sleep 1
+            rm -rf ~/Library/Saved\ Application\ State/com.andneiman.tododo.savedState
+            open dd/Build/Products/Debug/Tododo.app --args -demo -demo-screen $screen -ApplePersistenceIgnoreState YES
+            sleep 7
+            screencapture -x "out/mac-$screen.png" || true
+          done
+          pkill -x Tododo 2>/dev/null || true
+          for f in out/*.png; do sips -Z 1600 -s format jpeg -s formatOptions 70 "$f" --out "${f%.png}.jpg" >/dev/null; done
+          rm -f out/*.png
+          [ -d build/Release/Tododo.app ] && ditto -c -k --keepParent build/Release/Tododo.app out/Tododo-mac.zip
       - name: End-to-end sync test (two app processes against a local server)
         run: |
           mkdir -p out
@@ -85,21 +101,6 @@ jobs:
           rm -f /tmp/seed.json
           TODODO_LOCAL_FILE=/tmp/seed.json node test/sync.test.mjs seed
           TODODO_LOCAL_FILE=/tmp/seed.json DATABASE_URL="postgres://$USER@localhost:5544/t" node test/sync.test.mjs run 2>&1 | tee ../out/server-tests.txt
-      - name: Screenshots of every screen
-        if: always()
-        run: |
-          mkdir -p out
-          for screen in myday list detail settings search empty; do
-            pkill -x Tododo 2>/dev/null || true
-            sleep 1
-            open dd/Build/Products/Debug/Tododo.app --args -demo -demo-screen $screen
-            sleep 7
-            screencapture -x "out/mac-$screen.png" || true
-          done
-          pkill -x Tododo 2>/dev/null || true
-          for f in out/*.png; do sips -Z 1600 -s format jpeg -s formatOptions 70 "$f" --out "${f%.png}.jpg" >/dev/null; done
-          rm -f out/*.png
-          [ -d build/Release/Tododo.app ] && ditto -c -k --keepParent build/Release/Tododo.app out/Tododo-mac.zip
       - name: Publish the app and reports to the ci-mac branch
         if: always()
         run: |
