@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+.vercel/
+.env*
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+# local credentials for the app (server URL + token) — never commit
+Secrets.plist
