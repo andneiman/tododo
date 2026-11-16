@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
-    @State private var selection: Scope?
+    @State private var selection: Scope? = ProcessInfo.processInfo.arguments.contains("-demo-myday") ? .myDay : nil
 
     var body: some View {
         NavigationSplitView {

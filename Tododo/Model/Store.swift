@@ -22,10 +22,49 @@ final class Store {
     @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var isSyncing = false
     @ObservationIgnored private var syncAgain = false
+    @ObservationIgnored private let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
 
     init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-demo") {
+            seedDemo()
+            return
+        }
+        #endif
         load()
     }
+
+    #if DEBUG
+    /// In-memory sample data for screenshots and UI checks (`-demo` launch argument). Nothing is saved or synced.
+    private func seedDemo() {
+        var n = 0.0
+        func add(_ kind: Kind, _ make: (inout Payload) -> Void) -> String {
+            n += 1
+            var d = Payload()
+            d.position = n
+            d.myDayPosition = n
+            make(&d)
+            let id = "demo-\(Int(n))"
+            records[id] = Record(id: id, kind: kind, data: d, updatedAt: n, deleted: false)
+            return id
+        }
+        let group = add(.group) { $0.name = "Проекты" }
+        let work = add(.list) { $0.name = "Quicks"; $0.groupId = group }
+        _ = add(.list) { $0.name = "Senses"; $0.groupId = group }
+        _ = add(.list) { $0.name = "Покупки" }
+        _ = add(.task) { $0.title = "Сделать"; $0.isSection = true; $0.myDay = true }
+        let call = add(.task) { $0.title = "Созвон с командой по релизу"; $0.myDay = true; $0.important = true; $0.listId = work }
+        _ = add(.step) { $0.title = "Собрать повестку"; $0.taskId = call; $0.completed = true }
+        _ = add(.step) { $0.title = "Отправить инвайты"; $0.taskId = call }
+        _ = add(.task) { $0.title = "Оплатить счёт за отопление"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Ответить на письма"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Подумать"; $0.isSection = true; $0.myDay = true }
+        _ = add(.task) { $0.title = "Идея для онбординга"; $0.myDay = true; $0.listId = work }
+        _ = add(.task) { $0.title = "Куда поехать в январе"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Заказать воду"; $0.myDay = true; $0.completed = true; $0.completedAt = Self.now }
+        _ = add(.task) { $0.title = "Молоко"; $0.listId = "demo-4" }
+    }
+    #endif
 
     // MARK: - Queries
 
@@ -376,6 +415,7 @@ final class Store {
     }
 
     private func scheduleSave() {
+        if isDemo { return }
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
@@ -387,6 +427,7 @@ final class Store {
 
     /// Writes immediately; call when the app leaves the foreground.
     func flush() {
+        if isDemo { return }
         saveTask?.cancel()
         if let data = snapshotData() { try? data.write(to: Self.fileURL, options: .atomic) }
     }
@@ -423,6 +464,7 @@ final class Store {
     }
 
     func sync() async {
+        if isDemo { return }
         guard let config = Config.current else {
             syncStatus = .notConfigured
             return
