@@ -1,14 +1,14 @@
 name: Build
 on:
   push:
-    paths: ["Tododo/**", "Tododo.xcodeproj/**", ".github/workflows/ios-build.yml"]
+    paths: ["Tododo/**", "Tododo.xcodeproj/**", "Support/**", "scripts/**", "backend/**", ".github/workflows/ios-build.yml"]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   ios:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Build for iOS Simulator
@@ -21,20 +21,26 @@ jobs:
       - name: Errors
         if: failure()
         run: grep -n -B2 -A6 "error:" build.log | head -200 || tail -80 build.log
-      - name: Launch in simulator and take screenshots
+      - name: Screenshots of every screen
         run: |
-          UDID=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9]( Pro)? \(" | head -1 | grep -oE "[0-9A-F-]{36}")
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl install "$UDID" build/Debug-iphonesimulator/Tododo.app
           mkdir -p shots
-          xcrun simctl launch "$UDID" com.andneiman.tododo -demo
-          sleep 8
-          xcrun simctl io "$UDID" screenshot shots/home.png
-          xcrun simctl terminate "$UDID" com.andneiman.tododo
-          xcrun simctl launch "$UDID" com.andneiman.tododo -demo -demo-myday
-          sleep 8
-          xcrun simctl io "$UDID" screenshot shots/myday.png
+          shoot() { # name-prefix, simulator udid
+            xcrun simctl boot "$2" || true
+            xcrun simctl bootstatus "$2" -b
+            xcrun simctl install "$2" build/Debug-iphonesimulator/Tododo.app
+            for screen in home myday list detail settings search empty; do
+              xcrun simctl terminate "$2" com.andneiman.tododo 2>/dev/null || true
+              xcrun simctl launch "$2" com.andneiman.tododo -demo -demo-screen $screen
+              sleep 6
+              xcrun simctl io "$2" screenshot "shots/$1-$screen.png"
+            done
+            xcrun simctl shutdown "$2" || true
+          }
+          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -30
+          BIG=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9] Pro \(" | head -1 | grep -oE "[0-9A-F-]{36}")
+          SMALL=$(xcrun simctl list devices available | grep -E "iPhone SE" | head -1 | grep -oE "[0-9A-F-]{36}")
+          shoot iphone "$BIG"
+          if [ -n "$SMALL" ]; then shoot se "$SMALL"; fi
           for f in shots/*.png; do sips -Z 1100 -s format jpeg -s formatOptions 70 "$f" --out "${f%.png}.jpg" >/dev/null; done
           rm shots/*.png
       - name: Publish screenshots to the ci-shots branch
@@ -46,31 +52,56 @@ jobs:
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
   mac:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Build for macOS
+      - name: Build for macOS (release)
         run: |
           xcodebuild -project Tododo.xcodeproj -target Tododo -sdk macosx \
             -configuration Release build > build.log 2>&1 || true
           grep -E "warning:|error:" build.log | sort -u | head -60 || true
           grep -q "BUILD SUCCEEDED" build.log
+      - name: Build for macOS (debug, through the shared scheme)
+        run: |
+          xcodebuild -project Tododo.xcodeproj -scheme Tododo -destination 'platform=macOS' \
+            -configuration Debug -derivedDataPath dd build > debug.log 2>&1 || true
+          grep -q "BUILD SUCCEEDED" debug.log
       - name: Errors
         if: failure()
-        run: grep -n -B2 -A6 "error:" build.log | head -200 || tail -80 build.log
-      - name: Launch with demo data and take a screenshot
+        run: grep -n -B2 -A6 "error:" build.log debug.log | head -200 || tail -80 debug.log
+      - name: End-to-end sync test (two app processes against a local server)
         run: |
           mkdir -p out
-          codesign -dv build/Release/Tododo.app 2>&1 | head -5 || true
-          lipo -archs build/Release/Tododo.app/Contents/MacOS/Tododo
-          # A debug build knows the -demo flag; the release build is what ships.
-          xcodebuild -project Tododo.xcodeproj -target Tododo -sdk macosx -configuration Debug build > debug.log 2>&1 || true
-          open build/Debug/Tododo.app --args -demo
-          sleep 12
-          screencapture -x out/mac.png || true
-          [ -f out/mac.png ] && sips -Z 1600 -s format jpeg -s formatOptions 70 out/mac.png --out out/mac.jpg >/dev/null && rm out/mac.png
-          ditto -c -k --keepParent build/Release/Tododo.app out/Tododo-mac.zip
-      - name: Publish the app to the ci-mac branch
+          set -o pipefail
+          scripts/e2e.sh "$PWD/dd/Build/Products/Debug/Tododo.app/Contents/MacOS/Tododo" 2>&1 | tee out/e2e.txt
+      - name: Server tests on Postgres
+        if: always()
+        run: |
+          brew list postgresql@16 >/dev/null 2>&1 || brew install postgresql@16 >/dev/null 2>&1 || true
+          PGBIN="$(brew --prefix postgresql@16)/bin"
+          "$PGBIN/initdb" -D /tmp/pgd -A trust >/dev/null && "$PGBIN/pg_ctl" -D /tmp/pgd -o "-p 5544" -l /tmp/pg.log start >/dev/null
+          sleep 2 && "$PGBIN/createdb" -p 5544 t
+          cd backend && npm ci --silent
+          rm -f /tmp/seed.json
+          TODODO_LOCAL_FILE=/tmp/seed.json node test/sync.test.mjs seed
+          TODODO_LOCAL_FILE=/tmp/seed.json DATABASE_URL="postgres://$USER@localhost:5544/t" node test/sync.test.mjs run 2>&1 | tee ../out/server-tests.txt
+      - name: Screenshots of every screen
+        if: always()
+        run: |
+          mkdir -p out
+          for screen in myday list detail settings search empty; do
+            pkill -x Tododo 2>/dev/null || true
+            sleep 1
+            open dd/Build/Products/Debug/Tododo.app --args -demo -demo-screen $screen
+            sleep 7
+            screencapture -x "out/mac-$screen.png" || true
+          done
+          pkill -x Tododo 2>/dev/null || true
+          for f in out/*.png; do sips -Z 1600 -s format jpeg -s formatOptions 70 "$f" --out "${f%.png}.jpg" >/dev/null; done
+          rm -f out/*.png
+          [ -d build/Release/Tododo.app ] && ditto -c -k --keepParent build/Release/Tododo.app out/Tododo-mac.zip
+      - name: Publish the app and reports to the ci-mac branch
+        if: always()
         run: |
           cd out
           git init -q -b ci-mac

@@ -35,6 +35,8 @@ final class Store {
     @ObservationIgnored private var fastPollUntil = Date.distantPast
     @ObservationIgnored private let monitor = NWPathMonitor()
     @ObservationIgnored private let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
+    /// Scripted test mode: nothing syncs on its own, only when the script says so.
+    @ObservationIgnored private let isManual = ProcessInfo.processInfo.arguments.contains("-e2e")
 
     init() {
         #if DEBUG
@@ -77,6 +79,28 @@ final class Store {
         _ = add(.task) { $0.title = "Куда поехать в январе"; $0.myDay = true }
         _ = add(.task) { $0.title = "Заказать воду"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
         _ = add(.task) { $0.title = "Молоко"; $0.listId = "demo-4" }
+        _ = add(.task) { $0.title = "Релиз"; $0.isSection = true; $0.listId = work }
+        _ = add(.task) { $0.title = "Проверить длинное название задачи, которое не помещается в одну строку и должно аккуратно переноситься"; $0.listId = work; $0.important = true }
+        _ = add(.task) { $0.title = "Обновить скриншоты в сторе"; $0.listId = work; $0.completed = true; $0.completedAt = now }
+    }
+
+    func debugFind(_ title: String, kind: Kind) -> String? {
+        records.values.first { $0.kind == kind && !$0.deleted && $0.title == title }?.id
+    }
+
+    /// Stable, human-readable state: one line per list, task and step.
+    func debugDump() -> [String] {
+        var lines: [String] = []
+        for l in lists { lines.append("list|\(l.title)") }
+        let tasks = records.values.filter { $0.kind == .task && !$0.deleted }.sorted { $0.title < $1.title }
+        for t in tasks {
+            let flags = [t.isSection ? "section" : nil, t.isDone ? "done" : nil, t.isImportant ? "important" : nil, t.isMyDay ? "myday" : nil]
+                .compactMap { $0 }.joined(separator: ",")
+            let s = steps(of: t.id).map { $0.title + ($0.isDone ? "(done)" : "") }.joined(separator: ",")
+            lines.append("task|\(t.title)|\(listName(listID(of: t)))|\(flags)|\(s)")
+        }
+        lines.append("pending|\(dirty.count)")
+        return lines
     }
     #endif
 
@@ -417,8 +441,11 @@ final class Store {
     }
 
     private static var directory: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        var dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Tododo", isDirectory: true)
+        #if DEBUG
+        if let custom = ProcessInfo.processInfo.environment["TODODO_DIR"] { dir = URL(fileURLWithPath: custom, isDirectory: true) }
+        #endif
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -520,7 +547,7 @@ final class Store {
 
     /// The moment the network comes back (out of a plane, a tunnel), push and pull right away.
     private func startNetworkMonitor() {
-        if isDemo { return }
+        if isDemo || isManual { return }
         monitor.pathUpdateHandler = { [weak self] path in
             guard path.status == .satisfied else { return }
             Task { @MainActor in
@@ -533,6 +560,7 @@ final class Store {
 
     /// While something is unsent and the server is unreachable, keep trying: 3s, 6s, 12s … up to a minute.
     private func scheduleRetry() {
+        if isManual { return }
         retryTask?.cancel()
         let delay = retryDelay
         retryDelay = min(retryDelay * 2, 60)
@@ -545,6 +573,7 @@ final class Store {
 
     /// Call when the app comes to the front: sync now and poll quickly for a while.
     func becameActive() {
+        if isManual { return }
         fastPollUntil = Date().addingTimeInterval(90)
         Task { await sync() }
     }
@@ -573,6 +602,7 @@ final class Store {
     }
 
     private func scheduleSync() {
+        if isManual { return }
         syncTask?.cancel()
         syncTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(700))
@@ -583,6 +613,7 @@ final class Store {
 
     /// Foreground loop: picks up changes made elsewhere (Claude, another device).
     func runSyncLoop() async {
+        if isManual { return }
         while !Task.isCancelled {
             await sync()
             // Quick polling right after activity (so the other device shows up within seconds), relaxed otherwise.

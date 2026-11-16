@@ -45,6 +45,7 @@ struct TaskDetailView: View {
                     }
                     .buttonStyle(.plain)
                     TextField("Название", text: $title, axis: .vertical)
+                        .textFieldStyle(.plain)
                         .font(.title3.weight(.semibold))
                         .onSubmit { store.rename(taskID, to: title) }
                 }
@@ -71,6 +72,7 @@ struct TaskDetailView: View {
                     Image(systemName: "plus")
                         .foregroundStyle(.secondary)
                     TextField("Следующий шаг", text: $newStep)
+                        .textFieldStyle(.plain)
                         .focused($stepFocused)
                         .submitLabel(.done)
                         .onSubmit(addStep)

@@ -103,6 +103,7 @@ struct TaskListView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
             TextField(isSection ? "Название отбивки" : "Добавить задачу", text: $draft)
+                .textFieldStyle(.plain)
                 .focused($adding)
                 .submitLabel(.done)
                 .onSubmit(submit)

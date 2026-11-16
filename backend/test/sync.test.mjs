@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 process.env.APP_TOKEN='a'; process.env.MCP_TOKEN='m';
-const sync=(await import('/home/claude/tododo/backend/api/sync.js')).default;
-const mcp=(await import('/home/claude/tododo/backend/api/mcp/[token].js')).default;
-const {backend}=await import('/home/claude/tododo/backend/lib/store.js');
+const sync=(await import('../api/sync.js')).default;
+const mcp=(await import('../api/mcp/[token].js')).default;
+const {backend}=await import('../lib/store.js');
 const call=(h,req)=>new Promise(r=>{const res={setHeader(){},status(c){this.c=c;return this},json(j){r({c:this.c,j})},end(){r({c:this.c})}};h({headers:{},query:{},...req},res)});
 const S=async(b)=>{const r=await call(sync,{method:'POST',headers:{authorization:'Bearer a'},body:b}); if(r.c!==200) throw new Error(JSON.stringify(r)); return r.j};
 let n=0;const T=async(name,args)=>{const r=await call(mcp,{method:'POST',query:{token:'m'},body:{jsonrpc:'2.0',id:++n,method:'tools/call',params:{name,arguments:args}}});const c=r.j.result.content[0].text;return r.j.result.isError?c:JSON.parse(c)};
@@ -39,7 +39,7 @@ r=await S({epoch:ep,cursor:A,changes:[]}); A=r.cursor; ok(r.changes.some(c=>c.id
 d=await T('recover',{action:'list_backups'}); ok(d.backups.length===1,'daily backup exists: '+JSON.stringify(d.backups[0]));
 const L=await T('manage_list',{action:'create',name:'Работа'}); await T('add_tasks',{tasks:[{title:'в работе',list:'Работа',steps:['s1']}]});
 // fake: move today's backup to "yesterday" after taking a new one that includes the list
-const pg=(await import('/home/claude/tododo/backend/node_modules/pg/lib/index.js')).default; const c=new pg.Client(process.env.DATABASE_URL); await c.connect();
+const pg=(await import('pg')).default; const c=new pg.Client(process.env.DATABASE_URL); await c.connect();
 await c.query("delete from backups; delete from meta where key='lastBackupDay'"); await T('add_tasks',{tasks:[{title:'триггер бэкапа'}]});
 await T('manage_list',{action:'delete',list:'Работа'});
 ok((await T('get_overview',{})).lists.length===1,'list deleted');

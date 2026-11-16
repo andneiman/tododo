@@ -4,8 +4,9 @@ struct SettingsView: View {
     @Environment(Store.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    @State private var url = ""
-    @State private var token = ""
+    @State private var setupCode = ""
+    @State private var setupFailed = false
+    @State private var connectedHost: String?
 
     var body: some View {
         NavigationStack {
@@ -24,19 +25,32 @@ struct SettingsView: View {
                     Text("Приложение полностью работает офлайн. Изменения отправляются на сервер, как только появляется сеть.")
                 }
 
-                Section("Сервер") {
-                    TextField("Адрес сервера", text: $url)
+                Section {
+                    if let host = connectedHost {
+                        LabeledContent("Сервер", value: host)
+                    }
+                    TextField("Код подключения", text: $setupCode)
                         .autocorrectionDisabled()
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
                     #endif
-                    SecureField("Токен приложения", text: $token)
-                    Button("Сохранить") {
-                        Config.save(url: url, token: token)
-                        Task { await store.sync() }
+                    Button(connectedHost == nil ? "Подключить" : "Подключить заново") {
+                        if Config.applySetup(setupCode) {
+                            setupCode = ""
+                            setupFailed = false
+                            connectedHost = Config.current?.url.host
+                            Task { await store.sync() }
+                        } else {
+                            setupFailed = true
+                        }
                     }
-                    .disabled(url.isEmpty || token.isEmpty)
+                    .disabled(setupCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                } header: {
+                    Text("Подключение")
+                } footer: {
+                    Text(setupFailed
+                         ? "Не похоже на код подключения. Он начинается с tododo://setup"
+                         : "Вставьте код подключения (tododo://setup…) или откройте его как ссылку на этом устройстве.")
                 }
 
                 Section {
@@ -62,10 +76,7 @@ struct SettingsView: View {
         #endif
         .onAppear {
             store.flush()
-            if let c = Config.current {
-                url = c.url.absoluteString
-                token = c.token
-            }
+            connectedHost = Config.current?.url.host
         }
     }
 

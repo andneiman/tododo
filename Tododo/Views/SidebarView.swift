@@ -4,7 +4,7 @@ struct SidebarView: View {
     @Environment(Store.self) private var store
     @Binding var selection: Scope?
 
-    @State private var query = ""
+    @State private var query = RootView.demoScreen == "search" ? "счёт" : ""
     @State private var collapsed: Set<String> = []
     @State private var detail: TaskRef?
     @State private var showSettings = false
@@ -48,8 +48,6 @@ struct SidebarView: View {
         #if os(iOS)
         .scrollContentBackground(.hidden)
         .background(Color.white)
-        #else
-        .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         #endif
         .navigationTitle("Tododo")
         .searchable(text: $query, prompt: "Поиск")
@@ -156,6 +154,9 @@ struct SidebarView: View {
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
         }
     }
 
@@ -165,6 +166,7 @@ struct SidebarView: View {
                 ask(.newList(groupID: nil))
             } label: {
                 Label("Новый список", systemImage: "plus")
+                    .fixedSize()
             }
             Spacer()
             Button {
@@ -174,6 +176,7 @@ struct SidebarView: View {
             }
             .accessibilityLabel("Новая группа")
         }
+        .buttonStyle(.borderless)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.bar)
