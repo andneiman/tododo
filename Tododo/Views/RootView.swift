@@ -1,28 +1,45 @@
 import SwiftUI
 
 struct RootView: View {
+    #if os(macOS)
+    @Environment(\.openSettings) private var openSettings
+    #endif
     @State private var selection: Scope? = RootView.initialSelection
-    @State private var debugSheet: String?
+    @State private var query = RootView.demoScreen == "search" ? "bill" : ""
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(selection: $selection)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 360)
+            SidebarView(selection: $selection, query: query)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 340)
         } detail: {
-            if let selection {
-                TaskListView(scope: selection)
-                    .id(selection)
-            } else {
-                ContentUnavailableView("Выберите список", systemImage: "checklist")
-            }
+            detail
         }
-        #if DEBUG
-        .sheet(item: $debugSheet) { name in
-            if name == "settings" { SettingsView() } else { TaskDetailView(taskID: "demo-6") }
-        }
+        .searchable(text: $query, prompt: "Search")
+        .onChange(of: selection) { _, _ in query = "" }
+        #if os(macOS)
         .onAppear {
-            let screen = RootView.demoScreen
-            if screen == "detail" || screen == "settings" { debugSheet = screen }
+            if RootView.demoScreen == "settings" { openSettings() }
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        #if os(macOS)
+        if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+            SearchResultsView(query: query)
+        } else if let selection {
+            TaskListView(scope: selection)
+                .id(selection)
+        } else {
+            ContentUnavailableView("No List Selected", systemImage: "checklist")
+        }
+        #else
+        if let selection {
+            TaskListView(scope: selection)
+                .id(selection)
+        } else {
+            ContentUnavailableView("No List Selected", systemImage: "checklist")
         }
         #endif
     }
@@ -39,7 +56,7 @@ struct RootView: View {
         case "myday", "detail": return .myDay
         case "list": return .list("demo-2")
         case "empty": return .list("demo-3")
-        case "home", "search", "settings": return nil
+        case "home", "search": return nil
         default: break
         }
         #if os(macOS)

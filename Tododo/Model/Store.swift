@@ -12,7 +12,7 @@ import UIKit
 @Observable
 final class Store {
     static let inboxID = "00000000-0000-0000-0000-000000000001"
-    static let inboxName = "Задачи"
+    static let inboxName = "Tasks"
 
     private(set) var records: [String: Record] = [:]
     private(set) var syncStatus: SyncStatus = .idle
@@ -66,24 +66,24 @@ final class Store {
             records[id] = Record(id: id, kind: kind, data: d, updatedAt: n, deleted: false)
             return id
         }
-        let group = add(.group) { $0.name = "Проекты" }
-        let work = add(.list) { $0.name = "Quicks"; $0.groupId = group }
-        _ = add(.list) { $0.name = "Senses"; $0.groupId = group }
-        _ = add(.list) { $0.name = "Покупки" }
-        _ = add(.task) { $0.title = "Сделать"; $0.isSection = true; $0.myDay = true }
-        let call = add(.task) { $0.title = "Созвон с командой по релизу"; $0.myDay = true; $0.important = true; $0.listId = work }
-        _ = add(.step) { $0.title = "Собрать повестку"; $0.taskId = call; $0.completed = true }
-        _ = add(.step) { $0.title = "Отправить инвайты"; $0.taskId = call }
-        _ = add(.task) { $0.title = "Оплатить счёт за отопление"; $0.myDay = true }
-        _ = add(.task) { $0.title = "Ответить на письма"; $0.myDay = true }
-        _ = add(.task) { $0.title = "Подумать"; $0.isSection = true; $0.myDay = true }
-        _ = add(.task) { $0.title = "Идея для онбординга"; $0.myDay = true; $0.listId = work }
-        _ = add(.task) { $0.title = "Куда поехать в январе"; $0.myDay = true }
-        _ = add(.task) { $0.title = "Заказать воду"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
-        _ = add(.task) { $0.title = "Молоко"; $0.listId = "demo-4" }
-        _ = add(.task) { $0.title = "Релиз"; $0.isSection = true; $0.listId = work }
-        _ = add(.task) { $0.title = "Проверить длинное название задачи, которое не помещается в одну строку и должно аккуратно переноситься"; $0.listId = work; $0.important = true }
-        _ = add(.task) { $0.title = "Обновить скриншоты в сторе"; $0.listId = work; $0.completed = true; $0.completedAt = now }
+        let group = add(.group) { $0.name = "Projects" }
+        let work = add(.list) { $0.name = "Launch"; $0.groupId = group }
+        _ = add(.list) { $0.name = "Personal"; $0.groupId = group }
+        _ = add(.list) { $0.name = "Groceries" }
+        _ = add(.task) { $0.title = "To Do"; $0.isSection = true; $0.myDay = true }
+        let call = add(.task) { $0.title = "Call the team about the release"; $0.myDay = true; $0.important = true; $0.listId = work }
+        _ = add(.step) { $0.title = "Prepare the agenda"; $0.taskId = call; $0.completed = true }
+        _ = add(.step) { $0.title = "Send invites"; $0.taskId = call }
+        _ = add(.task) { $0.title = "Pay the heating bill"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Reply to emails"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Think About"; $0.isSection = true; $0.myDay = true }
+        _ = add(.task) { $0.title = "Onboarding idea"; $0.myDay = true; $0.listId = work }
+        _ = add(.task) { $0.title = "Where to go in January"; $0.myDay = true }
+        _ = add(.task) { $0.title = "Order water"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
+        _ = add(.task) { $0.title = "Oat milk"; $0.listId = "demo-4" }
+        _ = add(.task) { $0.title = "Release"; $0.isSection = true; $0.listId = work }
+        _ = add(.task) { $0.title = "Check a long task title that does not fit on one line and should wrap neatly onto the next one"; $0.listId = work; $0.important = true }
+        _ = add(.task) { $0.title = "Update App Store screenshots"; $0.listId = work; $0.completed = true; $0.completedAt = now }
     }
 
     func debugFind(_ title: String, kind: Kind) -> String? {
@@ -152,8 +152,8 @@ final class Store {
 
     func title(of scope: Scope) -> String {
         switch scope {
-        case .myDay: return "Мой день"
-        case .important: return "Важные"
+        case .myDay: return "My Day"
+        case .important: return "Important"
         case .inbox: return Self.inboxName
         case .list(let id): return listName(id)
         }
@@ -204,6 +204,11 @@ final class Store {
 
     func steps(of taskID: String) -> [Record] {
         live(.step).filter { $0.data.taskId == taskID }.sorted(by: Self.byPosition)
+    }
+
+    /// All tasks in a list, open and completed (sections excluded).
+    func taskCount(inList id: String) -> Int {
+        live(.task).filter { $0.data.listId == id && !$0.isSection }.count
     }
 
     func stepProgress(of taskID: String) -> (done: Int, total: Int)? {
@@ -418,13 +423,14 @@ final class Store {
         update(id) { $0.groupId = groupID }
     }
 
-    func addGroup(name raw: String) {
+    @discardableResult
+    func addGroup(name raw: String) -> String? {
         let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
+        guard !name.isEmpty else { return nil }
         var d = Payload()
         d.name = name
         d.position = nextPosition(live(.group))
-        _ = create(.group, d)
+        return create(.group, d)
     }
 
     /// Removes the group; its lists stay and become ungrouped.

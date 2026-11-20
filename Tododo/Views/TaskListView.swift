@@ -4,247 +4,204 @@ struct TaskListView: View {
     @Environment(Store.self) private var store
     let scope: Scope
 
+    @State private var selectedTask: String? = RootView.demoScreen == "detail" ? "demo-6" : nil
+    @State private var showDone = RootView.demoScreen == "list"
     @State private var draft = ""
-    @State private var showDone = false
-    @State private var detail: TaskRef?
-    @State private var renaming: TaskRef?
-    @State private var renameText = ""
+    @State private var renamingSection: String?
+    @State private var sectionText = ""
     @FocusState private var adding: Bool
+    @FocusState private var sectionFocused: Bool
 
     var body: some View {
         let tasks = store.tasks(in: scope)
-        let mover: ((IndexSet, Int) -> Void)? = scope == .important ? nil : { store.reorder(in: scope, from: $0, to: $1) }
-        List {
+        let openCount = tasks.open.filter { !$0.isSection }.count
+        let mover: ((IndexSet, Int) -> Void)? = scope == .important
+            ? nil
+            : { store.reorder(in: scope, from: $0, to: $1) }
+
+        List(selection: $selectedTask) {
+            #if os(macOS)
+            ListHeader(title: store.title(of: scope), subtitle: subtitle, count: openCount)
+            #endif
+
             ForEach(tasks.open) { item in
                 row(item)
+                    .tag(item.id)
             }
             .onMove(perform: mover)
 
             if !tasks.done.isEmpty {
-                Button {
-                    withAnimation { showDone.toggle() }
-                } label: {
+                Section(isExpanded: $showDone) {
+                    ForEach(tasks.done) { item in
+                        TaskRow(task: item, scope: scope)
+                            .tag(item.id)
+                    }
+                } header: {
                     HStack(spacing: 6) {
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .rotationEffect(.degrees(showDone ? 90 : 0))
-                        Text("Завершённые")
+                        Text("Completed")
                         Text("\(tasks.done.count)")
                             .monospacedDigit()
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 14)
-                }
-                .buttonStyle(.plain)
-                .listRowSeparator(.hidden)
-
-                if showDone {
-                    ForEach(tasks.done) { item in
-                        row(item)
+                            .foregroundStyle(.tertiary)
                     }
                 }
-            }
-
-            if tasks.open.isEmpty && tasks.done.isEmpty {
-                emptyState
-                    .listRowSeparator(.hidden)
             }
         }
+        #if os(macOS)
+        .listStyle(.inset)
+        .onDeleteCommand(perform: deleteSelected)
+        .onExitCommand { selectedTask = nil }
+        .onKeyPress(.space) {
+            guard !sectionFocused, let id = selectedTask, let t = store.record(id), !t.isSection else { return .ignored }
+            withAnimation(.snappy) { store.toggleDone(id) }
+            return .handled
+        }
+        #else
         .listStyle(.plain)
+        #endif
         .scrollDismissesKeyboard(.interactively)
+        .overlay {
+            if tasks.open.isEmpty && tasks.done.isEmpty {
+                ContentUnavailableView {
+                    Label(emptyTitle, systemImage: scope == .myDay ? "sun.max" : "checklist")
+                } description: {
+                    Text(emptyText)
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) { addBar }
+        .softScrollEdges()
         .navigationTitle(store.title(of: scope))
-        .safeAreaInset(edge: .bottom) { addBar }
-        .refreshable { await store.sync() }
-        .background {
-            // ⌘N jumps to the "add task" field (Mac and hardware keyboards).
-            Button("Новая задача") { adding = true }
+        .hidesToolbarTitle()
+        .toolbar {
+            #if os(macOS)
+            ToolbarItem(placement: .primaryAction) {
+                Button { adding = true } label: {
+                    Label("New Task", systemImage: "plus")
+                }
                 .keyboardShortcut("n", modifiers: .command)
-                .hidden()
+                .help("New Task (⌘N)")
+            }
+            #endif
         }
+        .refreshable { await store.sync() }
         .sensoryFeedback(.success, trigger: store.doneTick)
-        .sheet(item: $detail) { TaskDetailView(taskID: $0.id) }
-        .alert("Отбивка", isPresented: renameShown, presenting: renaming) { ref in
-            TextField("Название", text: $renameText)
-            Button("Готово") { store.rename(ref.id, to: renameText) }
-            Button("Отмена", role: .cancel) {}
+        .onChange(of: sectionFocused) { _, focused in
+            if !focused { commitSection() }
         }
+        .modifier(TaskInspector(selection: $selectedTask))
     }
+
+    // MARK: Rows
 
     @ViewBuilder
     private func row(_ item: Record) -> some View {
         if item.isSection {
-            SectionDivider(title: item.title)
-                .contentShape(Rectangle())
-                .onTapGesture { startRename(item) }
-                .listRowSeparator(.hidden)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Удалить", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
+            Group {
+                if renamingSection == item.id {
+                    TextField("Section Name", text: $sectionText, prompt: Text("Section"))
+                        .textFieldStyle(.plain)
+                        .focused($sectionFocused)
+                        .onSubmit { sectionFocused = false }
+                } else {
+                    Text(item.title)
                 }
-                .contextMenu {
-                    Button("Переименовать", systemImage: "pencil") { startRename(item) }
-                    Button("Удалить отбивку", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
-                }
+            }
+            .font(.headline)
+            .foregroundStyle(.secondary)
+            .padding(.top, 16)
+            .padding(.bottom, 2)
+            .listRowSeparator(.hidden)
+            .contextMenu {
+                Button("Rename Section", systemImage: "pencil") { startRenaming(item) }
+                Divider()
+                Button("Delete Section", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
+            }
+            .swipeActions(edge: .trailing) {
+                Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
+            }
         } else {
-            TaskRow(task: item, scope: scope) { detail = TaskRef(id: item.id) }
+            TaskRow(task: item, scope: scope)
         }
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: scope == .myDay ? "sun.max" : "checkmark.circle")
-                .font(.system(size: 40, weight: .ultraLight))
-            Text(scope == .myDay ? "Что сделаем сегодня?" : "Пока пусто")
-                .font(.subheadline)
-        }
-        .foregroundStyle(.tertiary)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
-    }
+    // MARK: Add bar
 
     private var addBar: some View {
         let isSection = draft.hasPrefix("#")
         return HStack(spacing: 10) {
             Image(systemName: isSection ? "number" : "plus")
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-            TextField(isSection ? "Название отбивки" : "Добавить задачу", text: $draft)
+                .font(.body.weight(.medium))
+                .foregroundStyle(isSection ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .frame(width: 18)
+            TextField("Add a Task", text: $draft, prompt: Text(isSection ? "Section Name" : "Add a Task"))
+                .labelsHidden()
                 .textFieldStyle(.plain)
                 .focused($adding)
                 .submitLabel(.done)
                 .onSubmit(submit)
             if isSection {
-                Text("отбивка")
-                    .font(.caption)
+                Text("Section")
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .padding(.vertical, 12)
+        .glassCapsule()
+        .help("Start with # to add a section divider")
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
     }
+
+    // MARK: Text
+
+    private var subtitle: String? {
+        switch scope {
+        case .myDay: return Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        default: return nil
+        }
+    }
+
+    private var emptyTitle: String {
+        scope == .myDay ? "Nothing for Today" : "No Tasks"
+    }
+
+    private var emptyText: String {
+        switch scope {
+        case .myDay: return "Tasks you add to My Day stay here until they’re done."
+        case .important: return "Star a task to see it here."
+        default: return "Add a task below. Start with # to add a section."
+        }
+    }
+
+    // MARK: Actions
 
     private func submit() {
         let text = draft
         draft = ""
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        withAnimation { store.addTask(text, in: scope) }
-        // Keep the keyboard up for the next task.
+        withAnimation(.snappy) { store.addTask(text, in: scope) }
+        // Keep the field active for the next task.
         DispatchQueue.main.async { adding = true }
     }
 
-    private var renameShown: Binding<Bool> {
-        Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
+    private func startRenaming(_ item: Record) {
+        sectionText = item.title
+        renamingSection = item.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { sectionFocused = true }
     }
 
-    private func startRename(_ item: Record) {
-        renameText = item.title
-        renaming = TaskRef(id: item.id)
-    }
-}
-
-/// A divider between blocks of tasks, like "Сделать" and "Подумать".
-struct SectionDivider: View {
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text(title.uppercased())
-                .font(.caption.weight(.semibold))
-                .tracking(1.2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Rectangle()
-                .fill(.quaternary)
-                .frame(height: 1)
-        }
-        .padding(.top, 18)
-        .padding(.bottom, 2)
-    }
-}
-
-struct TaskRow: View {
-    @Environment(Store.self) private var store
-    let task: Record
-    /// The screen the row is shown on; `nil` in search results.
-    let scope: Scope?
-    let onOpen: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                withAnimation { store.toggleDone(task.id) }
-            } label: {
-                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 23, weight: .light))
-                    .foregroundStyle(task.isDone ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isDone ? "Вернуть в работу" : "Завершить")
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .strikethrough(task.isDone)
-                    .foregroundStyle(task.isDone ? .secondary : .primary)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            Spacer(minLength: 8)
-
-            Button {
-                store.toggleImportant(task.id)
-            } label: {
-                Image(systemName: task.isImportant ? "star.fill" : "star")
-                    .foregroundStyle(task.isImportant ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Важное")
-        }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onOpen)
-        .swipeActions(edge: .trailing) {
-            Button("Удалить", systemImage: "trash", role: .destructive) { store.deleteTask(task.id) }
-        }
-        .swipeActions(edge: .leading) {
-            Button(task.isMyDay ? "Убрать" : "Мой день", systemImage: task.isMyDay ? "sun.max.fill" : "sun.max") {
-                store.toggleMyDay(task.id)
-            }
-            .tint(.orange)
-        }
-        .contextMenu {
-            Button(task.isMyDay ? "Убрать из «Моего дня»" : "Добавить в «Мой день»", systemImage: "sun.max") {
-                store.toggleMyDay(task.id)
-            }
-            Button(task.isImportant ? "Снять важность" : "Отметить важным", systemImage: "star") {
-                store.toggleImportant(task.id)
-            }
-            Menu("Переместить", systemImage: "arrow.right.square") {
-                Button(Store.inboxName) { store.moveTask(task.id, toList: Store.inboxID) }
-                ForEach(store.lists) { list in
-                    Button(list.title) { store.moveTask(task.id, toList: list.id) }
-                }
-            }
-            Button("Удалить", systemImage: "trash", role: .destructive) { store.deleteTask(task.id) }
-        }
+    private func commitSection() {
+        guard let id = renamingSection else { return }
+        renamingSection = nil
+        store.rename(id, to: sectionText)
     }
 
-    private var subtitle: String? {
-        var parts: [String] = []
-        var showsList = true
-        if let scope {
-            if case .inbox = scope { showsList = false }
-            if case .list = scope { showsList = false }
-        }
-        if showsList { parts.append(store.listName(task.data.listId)) }
-        if task.isMyDay && scope != .myDay { parts.append("Мой день") }
-        if let p = store.stepProgress(of: task.id) { parts.append("\(p.done) из \(p.total)") }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    private func deleteSelected() {
+        guard let id = selectedTask else { return }
+        selectedTask = nil
+        store.deleteTask(id)
     }
 }

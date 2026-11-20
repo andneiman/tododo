@@ -6,7 +6,7 @@ import { tools } from '../../lib/tools.js';
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS =
   'Personal to-do app "Tododo" (Microsoft To Do style). Lists hold tasks; tasks can have steps, an "important" flag and a "My Day" flag. ' +
-  'My Day does not reset overnight: tasks stay until completed or removed. Section dividers (e.g. "Сделать", "Подумать") are special items that visually group the tasks below them. ' +
+  'My Day does not reset overnight: tasks stay until completed or removed. Section dividers (e.g. "To Do", "Think About") are special items that visually group the tasks below them. ' +
   'There are no due dates or reminders. Changes sync to the user\'s devices within seconds.';
 
 async function rpc(msg) {

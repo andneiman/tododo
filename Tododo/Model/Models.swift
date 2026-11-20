@@ -17,7 +17,7 @@ struct Payload: Codable, Equatable {
     var important: Bool?
     var myDay: Bool?
     var myDayPosition: Double?
-    var isSection: Bool?       // task that is a visual divider ("Сделать", "Подумать")
+    var isSection: Bool?       // task that is a visual divider ("To Do", "Think About")
     var createdAt: Double?
 }
 

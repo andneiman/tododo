@@ -22,9 +22,9 @@ server_start
 echo "1. Phone creates, Mac sees"
 run A "add:Молоко;add:# Сделать;addmyday:Позвонить;list:Работа;add:Отчёт;move:Отчёт>Работа;step:Отчёт>Собрать цифры;sync" > /dev/null
 OUT="$(run B "sync;dump")"
-check "task arrives" 'echo "$OUT" | grep -q "^task|Молоко|Задачи||"'
-check "section arrives" 'echo "$OUT" | grep -q "^task|Сделать|Задачи|section"'
-check "my day flag arrives" 'echo "$OUT" | grep -q "^task|Позвонить|Задачи|myday"'
+check "task arrives" 'echo "$OUT" | grep -q "^task|Молоко|Tasks||"'
+check "section arrives" 'echo "$OUT" | grep -q "^task|Сделать|Tasks|section"'
+check "my day flag arrives" 'echo "$OUT" | grep -q "^task|Позвонить|Tasks|myday"'
 check "list, moved task and step arrive" 'echo "$OUT" | grep -q "^task|Отчёт|Работа||Собрать цифры"'
 check "nothing pending on Mac" 'echo "$OUT" | grep -q "^pending|0"'
 
@@ -32,7 +32,7 @@ echo "2. Both edit the same task before syncing (different fields)"
 run A "rename:Молоко>Овсяное молоко" > /dev/null
 run B "star:Молоко;done:Молоко;step:Молоко>Проверить срок;sync" > /dev/null
 OUT="$(run A "sync;dump")"
-check "phone keeps its rename and gets star, done and step" 'echo "$OUT" | grep -q "^task|Овсяное молоко|Задачи|done,important|Проверить срок"'
+check "phone keeps its rename and gets star, done and step" 'echo "$OUT" | grep -q "^task|Овсяное молоко|Tasks|done,important|Проверить срок"'
 same "after field merge"
 
 echo "3. Offline (airplane): edits are kept, then sent when the network is back"
@@ -46,7 +46,7 @@ server_start
 OUT="$(run A "sync;dump")"
 check "everything sent after reconnect" 'echo "$OUT" | grep -q "^pending|0"'
 OUT="$(run B "sync;dump")"
-check "Mac receives airplane edits" 'echo "$OUT" | grep -q "^task|В самолёте 1" && echo "$OUT" | grep -q "^task|Позвонить|Задачи|done,myday"'
+check "Mac receives airplane edits" 'echo "$OUT" | grep -q "^task|В самолёте 1" && echo "$OUT" | grep -q "^task|Позвонить|Tasks|done,myday"'
 same "after offline period"
 
 echo "4. One device deletes, the other edits the same task later"
@@ -64,7 +64,7 @@ check "task removed on phone" '! echo "$OUT" | grep -q "В самолёте 2"'
 echo "6. Change made through Claude (MCP) reaches devices"
 mcp add_tasks '{"tasks":[{"title":"Из Claude","my_day":true,"steps":["шаг 1"]}]}' > /dev/null
 OUT="$(run A "sync;dump")"
-check "task from Claude arrives" 'echo "$OUT" | grep -q "^task|Из Claude|Задачи|myday|шаг 1"'
+check "task from Claude arrives" 'echo "$OUT" | grep -q "^task|Из Claude|Tasks|myday|шаг 1"'
 run A "done:Из Claude;sync" > /dev/null
 check "Claude sees it completed" 'mcp list_tasks "{\"view\":\"my_day\",\"include_completed\":true}" | grep -q "Из Claude.*completed.*true"'
 
@@ -73,7 +73,7 @@ run A "delete:Овсяное молоко;sync" > /dev/null
 ID="$(mcp recover '{"action":"list_deleted"}' | grep -o 'id\\":\\"[^\\]*\\",\\"kind\\":\\"task\\",\\"title\\":\\"Овсяное молоко' | head -1 | sed 's/id\\":\\"//; s/\\".*//')"
 mcp recover "{\"action\":\"undelete\",\"ids\":[\"$ID\"]}" > /dev/null
 OUT="$(run A "sync;dump")"
-check "restored task with its step is back" 'echo "$OUT" | grep -q "^task|Овсяное молоко|Задачи|done,important|Проверить срок"'
+check "restored task with its step is back" 'echo "$OUT" | grep -q "^task|Овсяное молоко|Tasks|done,important|Проверить срок"'
 same "after restore"
 
 echo "8. Server loses all data: devices put it back"
@@ -94,7 +94,7 @@ check "phone recovers everything" '[ "$OUT" = "$EXPECT" ]'
 echo "10. Rapid alternation: edit on phone, immediately continue on Mac"
 for i in 1 2 3 4 5; do run A "add:Чередование $i;sync" > /dev/null; run B "sync;done:Чередование $i;sync" > /dev/null; done
 OUT="$(run A "sync;dump")"
-check "all five created on phone are done after Mac" '[ "$(echo "$OUT" | grep -c "^task|Чередование .|Задачи|done")" = "5" ]'
+check "all five created on phone are done after Mac" '[ "$(echo "$OUT" | grep -c "^task|Чередование .|Tasks|done")" = "5" ]'
 same "after alternation"
 
 server_stop

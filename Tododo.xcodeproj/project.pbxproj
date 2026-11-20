@@ -86,7 +86,7 @@
 				};
 			};
 			buildConfigurationList = 7D000000000000000000000B /* Build configuration list for PBXProject "Tododo" */;
-			developmentRegion = ru;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,

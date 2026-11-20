@@ -22,11 +22,11 @@ struct TododoApp: App {
                 .preferredColorScheme(.light)
                 .task { await store.runSyncLoop() }
                 .onOpenURL { url in
-                    // A connection link (tododo://setup?...) configures sync in one tap.
+                    // A connection link (tododo://setup?...) configures sync in one step.
                     if Config.applySetup(url.absoluteString) { store.becameActive() }
                 }
         }
-        .defaultSize(width: 940, height: 660)
+        .defaultSize(width: 1060, height: 700)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 store.becameActive()
@@ -34,5 +34,19 @@ struct TododoApp: App {
                 store.resignedActive()
             }
         }
+        #if os(macOS)
+        .commands {
+            // ⌘N adds a task (see the toolbar), not a second window.
+            CommandGroup(replacing: .newItem) {}
+        }
+        #endif
+
+        #if os(macOS)
+        Settings {
+            SettingsView()
+                .environment(store)
+                .preferredColorScheme(.light)
+        }
+        #endif
     }
 }

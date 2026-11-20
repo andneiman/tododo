@@ -9,85 +9,98 @@ struct SettingsView: View {
     @State private var connectedHost: String?
 
     var body: some View {
+        #if os(iOS)
         NavigationStack {
-            Form {
-                Section {
-                    LabeledContent("Состояние", value: statusText)
-                    if store.pendingCount > 0 {
-                        LabeledContent("Ждут отправки", value: "\(store.pendingCount)")
+            form
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
                     }
-                    Button("Синхронизировать сейчас") {
+                }
+        }
+        #else
+        form
+            .frame(width: 480, height: 470)
+        #endif
+    }
+
+    private var form: some View {
+        Form {
+            Section {
+                LabeledContent {
+                    Button("Sync Now") {
                         Task { await store.sync() }
                     }
-                } header: {
-                    Text("Синхронизация")
-                } footer: {
-                    Text("Приложение полностью работает офлайн. Изменения отправляются на сервер, как только появляется сеть.")
-                }
-
-                Section {
-                    if let host = connectedHost {
-                        LabeledContent("Сервер", value: host)
+                    .disabled(Config.current == nil)
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Status")
+                            Text(store.syncText)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: store.syncSymbol)
+                            .foregroundStyle(store.syncNeedsAttention ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tint))
                     }
-                    TextField("Код подключения", text: $setupCode, prompt: Text("Код подключения"))
+                }
+            } header: {
+                Text("Sync")
+            } footer: {
+                Text("Tododo works fully offline. Changes upload as soon as you’re back online.")
+            }
+
+            Section {
+                if let connectedHost {
+                    LabeledContent("Server", value: connectedHost)
+                }
+                HStack {
+                    TextField("Connection Code", text: $setupCode, prompt: Text("Paste a connection code"))
                         .labelsHidden()
                         .autocorrectionDisabled()
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
                     #endif
-                    Button(connectedHost == nil ? "Подключить" : "Подключить заново") {
-                        if Config.applySetup(setupCode) {
-                            setupCode = ""
-                            setupFailed = false
-                            connectedHost = Config.current?.url.host
-                            Task { await store.sync() }
-                        } else {
-                            setupFailed = true
-                        }
-                    }
-                    .disabled(setupCode.trimmingCharacters(in: .whitespaces).isEmpty)
-                } header: {
-                    Text("Подключение")
-                } footer: {
-                    Text(setupFailed
-                         ? "Не похоже на код подключения. Он начинается с tododo://setup"
-                         : "Вставьте код подключения (tododo://setup…) или откройте его как ссылку на этом устройстве.")
+                        .onSubmit(connect)
+                    Button(connectedHost == nil ? "Connect" : "Reconnect", action: connect)
+                        .disabled(setupCode.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-
-                Section {
-                    ShareLink(item: Store.fileURL) {
-                        Label("Экспортировать все данные", systemImage: "square.and.arrow.up")
-                    }
-                } header: {
-                    Text("Резервные копии")
-                } footer: {
-                    Text("Копия данных сохраняется на устройстве каждый день (30 дней) и на сервере (90 дней). Удалённое можно вернуть через Claude.")
-                }
+            } header: {
+                Text("Connection")
+            } footer: {
+                Text(setupFailed
+                     ? "That doesn’t look like a connection code. It starts with tododo://setup"
+                     : "Open the connection link on this device, or paste it here.")
             }
-            .formStyle(.grouped)
-            .navigationTitle("Настройки")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { dismiss() }
+
+            Section {
+                ShareLink(item: Store.fileURL) {
+                    Label("Export Data…", systemImage: "square.and.arrow.up")
                 }
+            } header: {
+                Text("Backups")
+            } footer: {
+                Text("A copy is saved on this device every day for 30 days, and on the server for 90 days. Deleted items can be restored from Claude.")
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 520)
-        #endif
+        .formStyle(.grouped)
         .onAppear {
             store.flush()
             connectedHost = Config.current?.url.host
         }
     }
 
-    private var statusText: String {
-        switch store.syncStatus {
-        case .notConfigured: return "Не настроена"
-        case .idle: return "Ожидание"
-        case .syncing: return "Синхронизация…"
-        case .ok(let date): return "Обновлено в \(date.formatted(date: .omitted, time: .shortened))"
-        case .offline: return "Нет связи — работаем офлайн"
+    private func connect() {
+        if Config.applySetup(setupCode) {
+            setupCode = ""
+            setupFailed = false
+            connectedHost = Config.current?.url.host
+            Task { await store.sync() }
+        } else {
+            setupFailed = true
         }
     }
 }

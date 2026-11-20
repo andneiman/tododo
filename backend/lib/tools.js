@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { setRecord, listBackups, getBackup, backend } from './store.js';
 
 export const INBOX = '00000000-0000-0000-0000-000000000001';
-const INBOX_NAME = 'Задачи';
+const INBOX_NAME = 'Tasks';
 
 const live = (state, kind) => Object.values(state.records).filter((r) => r.kind === kind && !r.deleted);
 const norm = (s) => String(s ?? '').trim().toLowerCase();
@@ -77,7 +77,7 @@ const parseTitle = (raw) => {
 export const tools = [
   {
     name: 'get_overview',
-    description: 'Overview of the to-do app: smart lists (My Day, Important, default "Задачи" inbox), user lists with their groups, and open-task counts. Call first to learn list names.',
+    description: 'Overview of the to-do app: smart lists (My Day, Important, default "Tasks" inbox), user lists with their groups, and open-task counts. Call first to learn list names.',
     inputSchema: { type: 'object', properties: {} },
     run(state) {
       const tasks = live(state, 'task').filter((t) => !t.data.isSection);
@@ -99,7 +99,7 @@ export const tools = [
   },
   {
     name: 'list_tasks',
-    description: 'List tasks in display order. view: "my_day" (My Day — tasks stay there until completed), "important", "all", or omit view and pass list (name or id; default inbox "Задачи"). Items with a "section" field are visual dividers (e.g. "Сделать", "Подумать"); tasks below a divider belong to it.',
+    description: 'List tasks in display order. view: "my_day" (My Day — tasks stay there until completed), "important", "all", or omit view and pass list (name or id; default inbox "Tasks"). Items with a "section" field are visual dividers (e.g. "To Do", "Think About"); tasks below a divider belong to it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -144,7 +144,7 @@ export const tools = [
             type: 'object',
             properties: {
               title: { type: 'string' },
-              list: { type: 'string', description: 'List name or id; default inbox "Задачи"' },
+              list: { type: 'string', description: 'List name or id; default inbox "Tasks"' },
               section: { type: 'string', description: 'Title of an existing section divider to place the task under' },
               my_day: { type: 'boolean' },
               important: { type: 'boolean' },
@@ -301,7 +301,7 @@ export const tools = [
         return { id: rec.id, name };
       }
       const id = resolveList(state, a.list ?? fail('list is required'));
-      if (id === INBOX) fail('The default "Задачи" list cannot be changed or deleted');
+      if (id === INBOX) fail('The default "Tasks" list cannot be changed or deleted');
       const l = state.records[id];
       if (a.action === 'delete') {
         const tasks = live(state, 'task').filter((t) => t.data.listId === id);
