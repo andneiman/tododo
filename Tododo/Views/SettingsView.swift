@@ -22,7 +22,7 @@ struct SettingsView: View {
         }
         #else
         form
-            .frame(width: 480, height: 470)
+            .frame(width: 480, height: 430)
         #endif
     }
 

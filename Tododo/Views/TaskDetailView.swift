@@ -20,8 +20,9 @@ struct TaskDetailView: View {
         .presentationDetents([.medium, .large])
         #else
         content
+            .onExitCommand(perform: onClose)
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem {
                     Button(action: onClose) {
                         Label("Hide Details", systemImage: "sidebar.trailing")
                     }
@@ -131,7 +132,7 @@ private struct TaskForm: View {
     }
 
     private var createdText: String {
-        guard let created = task.data.createdAt else { return "Task" }
+        guard let created = task.data.createdAt else { return "" }
         let date = Date(timeIntervalSince1970: created / 1000)
         return "Created \(date.formatted(date: .abbreviated, time: .omitted))"
     }

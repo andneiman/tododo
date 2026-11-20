@@ -61,6 +61,7 @@ final class Store {
             var d = Payload()
             d.position = n
             d.myDayPosition = n
+            d.createdAt = now - 86_400_000 * 3
             make(&d)
             let id = "demo-\(Int(n))"
             records[id] = Record(id: id, kind: kind, data: d, updatedAt: n, deleted: false)

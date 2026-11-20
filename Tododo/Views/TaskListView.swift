@@ -19,22 +19,23 @@ struct TaskListView: View {
             ? nil
             : { store.reorder(in: scope, from: $0, to: $1) }
 
-        List(selection: $selectedTask) {
+        List {
             #if os(macOS)
             ListHeader(title: store.title(of: scope), subtitle: subtitle, count: openCount)
             #endif
 
             ForEach(tasks.open) { item in
                 row(item)
-                    .tag(item.id)
             }
             .onMove(perform: mover)
 
             if !tasks.done.isEmpty {
-                Section(isExpanded: $showDone) {
-                    ForEach(tasks.done) { item in
-                        TaskRow(task: item, scope: scope)
-                            .tag(item.id)
+                Section {
+                    if showDone {
+                        ForEach(tasks.done) { item in
+                            TaskRow(task: item, scope: scope)
+                                .selectable(item.id, selection: $selectedTask)
+                        }
                     }
                 } header: {
                     HStack(spacing: 6) {
@@ -42,19 +43,20 @@ struct TaskListView: View {
                         Text("\(tasks.done.count)")
                             .monospacedDigit()
                             .foregroundStyle(.tertiary)
+                        Spacer()
+                        Button(showDone ? "Hide" : "Show") {
+                            withAnimation(.snappy) { showDone.toggle() }
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.subheadline)
                     }
+                    .padding(.top, 10)
                 }
             }
         }
         #if os(macOS)
         .listStyle(.inset)
-        .onDeleteCommand(perform: deleteSelected)
         .onExitCommand { selectedTask = nil }
-        .onKeyPress(.space) {
-            guard !sectionFocused, let id = selectedTask, let t = store.record(id), !t.isSection else { return .ignored }
-            withAnimation(.snappy) { store.toggleDone(id) }
-            return .handled
-        }
         #else
         .listStyle(.plain)
         #endif
@@ -75,7 +77,7 @@ struct TaskListView: View {
         .hidesToolbarTitle()
         .toolbar {
             #if os(macOS)
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItem {
                 Button { adding = true } label: {
                     Label("New Task", systemImage: "plus")
                 }
@@ -122,6 +124,7 @@ struct TaskListView: View {
             }
         } else {
             TaskRow(task: item, scope: scope)
+                .selectable(item.id, selection: $selectedTask)
         }
     }
 
@@ -197,11 +200,5 @@ struct TaskListView: View {
         guard let id = renamingSection else { return }
         renamingSection = nil
         store.rename(id, to: sectionText)
-    }
-
-    private func deleteSelected() {
-        guard let id = selectedTask else { return }
-        selectedTask = nil
-        store.deleteTask(id)
     }
 }

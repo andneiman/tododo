@@ -53,7 +53,7 @@ struct CheckButton: View {
         Button(action: action) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: size, weight: .light))
-                .foregroundStyle(done ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                .foregroundStyle(done ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: size + 6, height: size + 6)
                 .contentShape(Rectangle())
@@ -224,6 +224,31 @@ struct TaskMenu: View {
     }
 }
 
+// MARK: - Selection
+
+/// A quiet, rounded highlight for the selected task instead of the heavy system selection.
+struct SelectableRow: ViewModifier {
+    let id: String
+    @Binding var selection: String?
+
+    func body(content: Content) -> some View {
+        content
+            .contentShape(Rectangle())
+            .onTapGesture { selection = selection == id ? nil : id }
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selection == id ? Color.accentColor.opacity(0.12) : Color.clear)
+                    .padding(.horizontal, 6)
+            )
+    }
+}
+
+extension View {
+    func selectable(_ id: String, selection: Binding<String?>) -> some View {
+        modifier(SelectableRow(id: id, selection: selection))
+    }
+}
+
 // MARK: - Inspector
 
 /// Shows the selected task's details: a trailing inspector on the Mac, a sheet on iPhone.
@@ -263,11 +288,11 @@ struct SearchResultsView: View {
 
     var body: some View {
         let results = store.search(query)
-        List(selection: $selectedTask) {
+        List {
             ListHeader(title: "Search", subtitle: results.count == 1 ? "1 result" : "\(results.count) results")
             ForEach(results) { task in
                 TaskRow(task: task, scope: nil)
-                    .tag(task.id)
+                    .selectable(task.id, selection: $selectedTask)
             }
         }
         .listStyle(.inset)
