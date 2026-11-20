@@ -49,6 +49,7 @@ struct TaskListView: View {
                         }
                         .buttonStyle(.borderless)
                         .font(.subheadline)
+                        .foregroundStyle(.tint)
                     }
                     .padding(.top, 10)
                 }

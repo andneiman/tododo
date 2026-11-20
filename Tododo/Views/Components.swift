@@ -58,7 +58,7 @@ struct CheckButton: View {
                 .frame(width: size + 6, height: size + 6)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .accessibilityLabel(done ? "Mark as not completed" : "Mark as completed")
     }
 }
