@@ -20,7 +20,7 @@ extension View {
     @ViewBuilder
     func softScrollEdges() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            self.scrollEdgeEffectStyle(.soft, for: .all)
+            self.scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             self
         }
@@ -147,7 +147,6 @@ struct TaskRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .foregroundStyle(task.isDone ? .secondary : .primary)
-                    .fixedSize(horizontal: false, vertical: true)
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
@@ -169,7 +168,7 @@ struct TaskRow: View {
                 .help(task.isImportant ? "Remove from Important" : "Mark as Important")
             }
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, rowPadding)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .swipeActions(edge: .trailing) {
@@ -182,6 +181,14 @@ struct TaskRow: View {
             .tint(.orange)
         }
         .contextMenu { TaskMenu(task: task) }
+    }
+
+    private var rowPadding: CGFloat {
+        #if os(macOS)
+        return 3
+        #else
+        return 1
+        #endif
     }
 
     private var subtitle: String? {
@@ -249,14 +256,44 @@ extension View {
     }
 }
 
+// MARK: - Section colors
+
+enum SectionColor: String, CaseIterable, Identifiable {
+    case gray, red, orange, green, teal, blue, indigo, purple, pink, brown
+
+    var id: String { rawValue }
+    var name: String { rawValue.capitalized }
+
+    var color: Color {
+        switch self {
+        case .gray: return .secondary
+        case .red: return .red
+        case .orange: return .orange
+        case .green: return .green
+        case .teal: return .teal
+        case .blue: return .blue
+        case .indigo: return .indigo
+        case .purple: return .purple
+        case .pink: return .pink
+        case .brown: return .brown
+        }
+    }
+
+    init(stored: String?) {
+        self = stored.flatMap(SectionColor.init(rawValue:)) ?? .gray
+    }
+}
+
 // MARK: - Inspector
 
 /// Shows the selected task's details: a trailing inspector on the Mac, a sheet on iPhone.
+/// The sheet keeps its own copy of the task id, so it never goes blank while being swiped away.
 struct TaskInspector: ViewModifier {
     @Environment(Store.self) private var store
     @Binding var selection: String?
 
     func body(content: Content) -> some View {
+        #if os(macOS)
         content.inspector(isPresented: shown) {
             Group {
                 if let id = selection {
@@ -266,6 +303,21 @@ struct TaskInspector: ViewModifier {
             }
             .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
         }
+        #else
+        content.sheet(item: sheetItem) { ref in
+            TaskDetailView(taskID: ref.id) { selection = nil }
+        }
+        #endif
+    }
+
+    private var sheetItem: Binding<TaskRef?> {
+        Binding(
+            get: {
+                guard let id = selection, let task = store.record(id), !task.isSection else { return nil }
+                return TaskRef(id: id)
+            },
+            set: { selection = $0?.id }
+        )
     }
 
     private var shown: Binding<Bool> {

@@ -18,6 +18,7 @@ struct Payload: Codable, Equatable {
     var myDay: Bool?
     var myDayPosition: Double?
     var isSection: Bool?       // task that is a visual divider ("To Do", "Think About")
+    var color: String?         // section divider text color (SectionColor raw value); nil = default gray
     var createdAt: Double?
 }
 
@@ -38,6 +39,7 @@ extension Payload {
         if myDayPosition != old.myDayPosition { out.append("myDayPosition") }
         if isSection != old.isSection { out.append("isSection") }
         if createdAt != old.createdAt { out.append("createdAt") }
+        if color != old.color { out.append("color") }
         return out
     }
 }

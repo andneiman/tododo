@@ -9,6 +9,7 @@ struct TaskListView: View {
     @State private var draft = ""
     @State private var renamingSection: String?
     @State private var sectionText = ""
+    @State private var justAdded: String?
     @FocusState private var adding: Bool
     @FocusState private var sectionFocused: Bool
 
@@ -19,6 +20,7 @@ struct TaskListView: View {
             ? nil
             : { store.reorder(in: scope, from: $0, to: $1) }
 
+        ScrollViewReader { proxy in
         List {
             #if os(macOS)
             ListHeader(title: store.title(of: scope), subtitle: subtitle, count: openCount)
@@ -60,7 +62,13 @@ struct TaskListView: View {
         .onExitCommand { selectedTask = nil }
         #else
         .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 34)
         #endif
+        .onChange(of: justAdded) { _, id in
+            guard let id else { return }
+            withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }
+        }
+        }
         .scrollDismissesKeyboard(.interactively)
         .overlay {
             if tasks.open.isEmpty && tasks.done.isEmpty {
@@ -87,7 +95,6 @@ struct TaskListView: View {
             }
             #endif
         }
-        .refreshable { await store.sync() }
         .sensoryFeedback(.success, trigger: store.doneTick)
         .onChange(of: sectionFocused) { _, focused in
             if !focused { commitSection() }
@@ -111,11 +118,22 @@ struct TaskListView: View {
                 }
             }
             .font(.headline)
-            .foregroundStyle(.secondary)
-            .padding(.top, 16)
-            .padding(.bottom, 2)
+            .foregroundStyle(SectionColor(stored: item.data.color).color)
+            .padding(.top, 8)
+            .padding(.bottom, 0)
             .listRowSeparator(.hidden)
             .contextMenu {
+                Picker("Color", selection: Binding(
+                    get: { SectionColor(stored: item.data.color) },
+                    set: { store.setColor(item.id, to: $0 == .gray ? nil : $0.rawValue) }
+                )) {
+                    ForEach(SectionColor.allCases) { c in
+                        Label(c.name, systemImage: "circle.fill")
+                            .tint(c.color)
+                            .tag(c)
+                    }
+                }
+                .pickerStyle(.palette)
                 Button("Rename Section", systemImage: "pencil") { startRenaming(item) }
                 Divider()
                 Button("Delete Section", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
@@ -186,7 +204,8 @@ struct TaskListView: View {
         let text = draft
         draft = ""
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        withAnimation(.snappy) { store.addTask(text, in: scope) }
+        let id = withAnimation(.snappy) { store.addTask(text, in: scope) }
+        justAdded = id
         // Keep the field active for the next task.
         DispatchQueue.main.async { adding = true }
     }

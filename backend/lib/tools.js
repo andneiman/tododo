@@ -68,6 +68,12 @@ function slot(items, key, sectionTitle) {
   }
   return sorted.length ? pos(sorted[sorted.length - 1]) + 1 : 1;
 }
+// Position above everything (new tasks go to the top, like in the apps).
+function top(items, key) {
+  const pos = (r) => r.data[key] ?? r.data.position ?? 0;
+  return items.length ? Math.min(...items.map(pos)) - 1 : 1;
+}
+const COLORS = ['gray', 'red', 'orange', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink', 'brown'];
 const parseTitle = (raw) => {
   const t = String(raw ?? '').trim();
   const m = t.match(/^#+\s*(.+)$/);
@@ -134,7 +140,7 @@ export const tools = [
   },
   {
     name: 'add_tasks',
-    description: 'Create one or more tasks. Each goes to the end of its list (or to the end of the given section). Set my_day to also put it in My Day. A title starting with "#" creates a section divider instead of a task.',
+    description: 'Create one or more tasks. Each goes to the top of its list (or to the end of the given section). Set my_day to also put it in My Day. A title starting with "#" creates a section divider instead of a task.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -170,10 +176,10 @@ export const tools = [
         if (t.section && !secInList && !(t.my_day && secInDay)) slot(inList, 'position', t.section); // throws a helpful error
         const now = Date.now();
         const data = {
-          listId, title, position: slot(inList, 'position', secInList ? t.section : null), createdAt: now,
+          listId, title, position: secInList ? slot(inList, 'position', t.section) : top(inList, 'position'), createdAt: now,
           ...(isSection ? { isSection: true } : {}),
           ...(t.important && !isSection ? { important: true } : {}),
-          ...(t.my_day ? { myDay: true, myDayPosition: slot(myDay, 'myDayPosition', secInDay ? t.section : null) } : {}),
+          ...(t.my_day ? { myDay: true, myDayPosition: secInDay ? slot(myDay, 'myDayPosition', t.section) : top(myDay, 'myDayPosition') } : {}),
         };
         const rec = setRecord(state, randomUUID(), 'task', data);
         if (!isSection) (t.steps || []).forEach((s, i) => setRecord(state, randomUUID(), 'step', { taskId: rec.id, title: String(s), position: i + 1 }));
@@ -184,7 +190,7 @@ export const tools = [
   },
   {
     name: 'update_task',
-    description: 'Change a task: rename, complete/reopen, toggle important or My Day, move to another list, or move under a section. Only provided fields change.',
+    description: 'Change a task: rename, complete/reopen, toggle important or My Day, move to another list, move under a section, or set a section divider\'s color. Only provided fields change.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -194,6 +200,7 @@ export const tools = [
         important: { type: 'boolean' },
         my_day: { type: 'boolean' },
         list: { type: 'string', description: 'Move to this list (name or id)' },
+        color: { type: 'string', enum: COLORS, description: 'Text color of a section divider (gray is the default)' },
         section: { type: 'string', description: 'Move to the end of this section (in the task list, and in My Day if the section is there)' },
       },
       required: ['id'],
@@ -204,6 +211,10 @@ export const tools = [
       if (a.title !== undefined) patch.title = String(a.title).trim() || fail('Empty title');
       if (a.completed !== undefined) { patch.completed = a.completed || null; patch.completedAt = a.completed ? Date.now() : null; }
       if (a.important !== undefined) patch.important = a.important || null;
+      if (a.color !== undefined) {
+        if (!COLORS.includes(a.color)) fail(`color must be one of: ${COLORS.join(', ')}`);
+        patch.color = a.color === 'gray' ? null : a.color;
+      }
       const others = live(state, 'task').filter((x) => x.id !== t.id);
       let listId = t.data.listId;
       if (a.list !== undefined) {

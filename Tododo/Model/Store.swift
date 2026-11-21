@@ -77,7 +77,7 @@ final class Store {
         _ = add(.step) { $0.title = "Send invites"; $0.taskId = call }
         _ = add(.task) { $0.title = "Pay the heating bill"; $0.myDay = true }
         _ = add(.task) { $0.title = "Reply to emails"; $0.myDay = true }
-        _ = add(.task) { $0.title = "Think About"; $0.isSection = true; $0.myDay = true }
+        _ = add(.task) { $0.title = "Think About"; $0.isSection = true; $0.myDay = true; $0.color = "indigo" }
         _ = add(.task) { $0.title = "Onboarding idea"; $0.myDay = true; $0.listId = work }
         _ = add(.task) { $0.title = "Where to go in January"; $0.myDay = true }
         _ = add(.task) { $0.title = "Order water"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
@@ -265,20 +265,27 @@ final class Store {
         return id
     }
 
+    /// Position above everything in `items` (new tasks go to the top).
+    private func topPosition(_ items: [Record], myDay: Bool = false) -> Double {
+        let low = items.map { myDay ? ($0.data.myDayPosition ?? $0.data.position ?? 0) : ($0.data.position ?? 0) }.min()
+        return (low ?? 1) - 1
+    }
+
     private func nextPosition(_ items: [Record], myDay: Bool = false) -> Double {
         let top = items.map { myDay ? ($0.data.myDayPosition ?? $0.data.position ?? 0) : ($0.data.position ?? 0) }.max()
         return (top ?? 0) + 1
     }
 
-    /// Adds a task to the bottom of the scope. A title starting with "#" becomes a section divider.
-    func addTask(_ raw: String, in scope: Scope) {
+    /// Adds a task to the top of the scope. A title starting with "#" becomes a section divider.
+    @discardableResult
+    func addTask(_ raw: String, in scope: Scope) -> String? {
         var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         var isSection = false
         if title.hasPrefix("#") {
             title = String(title.drop(while: { $0 == "#" })).trimmingCharacters(in: .whitespaces)
             isSection = true
         }
-        guard !title.isEmpty else { return }
+        guard !title.isEmpty else { return nil }
 
         var listID = Self.inboxID
         if case .list(let id) = scope { listID = id }
@@ -288,14 +295,19 @@ final class Store {
         d.title = title
         d.listId = listID
         d.createdAt = now
-        d.position = nextPosition(all.filter { self.listID(of: $0) == listID })
+        d.position = topPosition(all.filter { self.listID(of: $0) == listID })
         if isSection { d.isSection = true }
         if scope == .myDay {
             d.myDay = true
-            d.myDayPosition = nextPosition(all.filter(\.isMyDay), myDay: true)
+            d.myDayPosition = topPosition(all.filter(\.isMyDay), myDay: true)
         }
         if scope == .important && !isSection { d.important = true }
-        _ = create(.task, d)
+        return create(.task, d)
+    }
+
+    /// Text color of a section divider; `nil` restores the default gray.
+    func setColor(_ id: String, to color: String?) {
+        update(id) { $0.color = color }
     }
 
     func toggleDone(_ id: String) {
