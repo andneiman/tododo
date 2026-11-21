@@ -4,6 +4,7 @@ import SwiftUI
 struct TododoApp: App {
     private static let sharedStore = Store()
     @State private var store = TododoApp.sharedStore
+    @State private var lock = AppLock()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -17,21 +18,38 @@ struct TododoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(store)
-                .preferredColorScheme(.light)
-                .task { await store.runSyncLoop() }
-                .onOpenURL { url in
-                    // A connection link (tododo://setup?...) configures sync in one step.
-                    if Config.applySetup(url.absoluteString) { store.becameActive() }
+            Group {
+                if lock.isLocked {
+                    LockView()
+                } else {
+                    RootView()
                 }
+            }
+            .overlay {
+                #if os(iOS)
+                if lock.isEnabled && !lock.isLocked && scenePhase != .active {
+                    PrivacyCover()
+                }
+                #endif
+            }
+            .environment(store)
+            .environment(lock)
+            .preferredColorScheme(.light)
+            .task { await store.runSyncLoop() }
+            .task { await lock.unlockOnLaunch() }
+            .onOpenURL { url in
+                // A connection link (tododo://setup?...) configures sync in one step.
+                if Config.applySetup(url.absoluteString) { store.becameActive() }
+            }
         }
         .defaultSize(width: 1060, height: 700)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 store.becameActive()
+                lock.appReturned()
             } else {
                 store.resignedActive()
+                lock.appLeft(phase)
             }
         }
         #if os(macOS)
@@ -45,6 +63,7 @@ struct TododoApp: App {
         Settings {
             SettingsView()
                 .environment(store)
+                .environment(lock)
                 .preferredColorScheme(.light)
         }
         #endif

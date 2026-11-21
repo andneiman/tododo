@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(Store.self) private var store
+    @Environment(AppLock.self) private var lock
     @Environment(\.dismiss) private var dismiss
 
     @State private var setupCode = ""
@@ -11,7 +12,7 @@ struct SettingsView: View {
     var body: some View {
         #if os(iOS)
         NavigationStack {
-            form
+            gated
                 .navigationTitle("Settings")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -21,9 +22,20 @@ struct SettingsView: View {
                 }
         }
         #else
-        form
-            .frame(width: 480, height: 430)
+        gated
+            .frame(width: 480, height: 560)
         #endif
+    }
+
+    /// Nothing here (export included) is reachable while the app is locked.
+    @ViewBuilder
+    private var gated: some View {
+        if lock.isLocked {
+            ContentUnavailableView("Tododo Is Locked", systemImage: "lock.fill",
+                                   description: Text("Unlock Tododo to change its settings."))
+        } else {
+            form
+        }
     }
 
     private var form: some View {
@@ -77,6 +89,28 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle(isOn: Binding(get: { lock.isEnabled }, set: { lock.setEnabled($0) })) {
+                    Label("Require \(lock.methodName)", systemImage: lock.methodSymbol)
+                }
+                .disabled(!AppLock.canAuthenticate && !lock.isEnabled)
+                if lock.isEnabled {
+                    Picker(selection: Binding(get: { lock.delay }, set: { lock.setDelay($0) })) {
+                        ForEach(AppLock.Delay.allCases) { delay in
+                            Text(delay.title).tag(delay)
+                        }
+                    } label: {
+                        Label("Lock", systemImage: "clock")
+                    }
+                }
+            } header: {
+                Text("Privacy")
+            } footer: {
+                Text(AppLock.canAuthenticate
+                     ? "Only you can open Tododo on this device. It also locks when you lock your \(deviceName)."
+                     : "Set up a passcode on this device to lock Tododo.")
+            }
+
+            Section {
                 ShareLink(item: Store.fileURL) {
                     Label("Export Data…", systemImage: "square.and.arrow.up")
                 }
@@ -91,6 +125,14 @@ struct SettingsView: View {
             store.flush()
             connectedHost = Config.current?.url.host
         }
+    }
+
+    private var deviceName: String {
+        #if os(macOS)
+        return "Mac"
+        #else
+        return "iPhone"
+        #endif
     }
 
     private func connect() {
