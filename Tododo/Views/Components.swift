@@ -20,7 +20,11 @@ extension View {
     @ViewBuilder
     func softScrollEdges() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
+            #if os(macOS)
+            self.scrollEdgeEffectStyle(.soft, for: .all)
+            #else
             self.scrollEdgeEffectStyle(.soft, for: .bottom)
+            #endif
         } else {
             self
         }
@@ -185,7 +189,7 @@ struct TaskRow: View {
 
     private var rowPadding: CGFloat {
         #if os(macOS)
-        return 3
+        return 5
         #else
         return 1
         #endif

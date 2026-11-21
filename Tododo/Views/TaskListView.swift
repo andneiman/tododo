@@ -66,7 +66,11 @@ struct TaskListView: View {
         #endif
         .onChange(of: justAdded) { _, id in
             guard let id else { return }
+            #if os(macOS)
+            withAnimation(.snappy) { proxy.scrollTo(id, anchor: .bottom) }
+            #else
             withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }
+            #endif
         }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -119,8 +123,8 @@ struct TaskListView: View {
             }
             .font(.headline)
             .foregroundStyle(SectionColor(stored: item.data.color).color)
-            .padding(.top, 8)
-            .padding(.bottom, 0)
+            .padding(.top, sectionTopPadding)
+            .padding(.bottom, sectionBottomPadding)
             .listRowSeparator(.hidden)
             .contextMenu {
                 Picker("Color", selection: Binding(
@@ -176,6 +180,16 @@ struct TaskListView: View {
         .padding(.top, 8)
         .padding(.bottom, 16)
     }
+
+    // MARK: Layout
+
+    #if os(macOS)
+    private let sectionTopPadding: CGFloat = 16
+    private let sectionBottomPadding: CGFloat = 2
+    #else
+    private let sectionTopPadding: CGFloat = 8
+    private let sectionBottomPadding: CGFloat = 0
+    #endif
 
     // MARK: Text
 
