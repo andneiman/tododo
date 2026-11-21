@@ -201,6 +201,8 @@ struct TaskRow: View {
         if let scope {
             if case .inbox = scope { showsList = false }
             if case .list = scope { showsList = false }
+            // My Day is a plan for today; which list a task lives in is noise there.
+            if case .myDay = scope { showsList = false }
         }
         if showsList { parts.append(store.listName(task.data.listId)) }
         if task.isMyDay && scope != .myDay { parts.append("My Day") }
