@@ -178,7 +178,17 @@ struct TaskListView: View {
         .help("Start with # to add a section divider")
         .padding(.horizontal, 20)
         .padding(.top, 8)
-        .padding(.bottom, 16)
+        .padding(.bottom, addBarBottomPadding)
+    }
+
+    /// iPhone: the field sits half its own height (~23 pt) lower, closer to the
+    /// home indicator. While typing it keeps its gap above the keyboard.
+    private var addBarBottomPadding: CGFloat {
+        #if os(iOS)
+        adding ? 16 : -7
+        #else
+        16
+        #endif
     }
 
     // MARK: Layout
