@@ -51,7 +51,7 @@ function times(r) {
 }
 function view(state, t) {
   if (t.data.isSection) return { id: t.id, section: t.data.title, list: listName(state, t.data.listId), ...(t.data.myDay ? { my_day: true } : {}) };
-  const steps = stepsOf(state, t.id).map((s) => ({ id: s.id, title: s.data.title, completed: !!s.data.completed }));
+  const steps = stepsOf(state, t.id).map((s) => ({ id: s.id, title: s.data.title, completed: !!s.data.completed, ...(s.data.important ? { starred: true } : {}) }));
   return {
     id: t.id,
     title: t.data.title,
@@ -272,7 +272,7 @@ export const tools = [
   },
   {
     name: 'edit_steps',
-    description: 'Manage steps (subtasks) of a task: add new ones, and/or update or delete existing steps by id.',
+    description: 'Manage steps (subtasks) of a task: add new ones, and/or update, star or delete existing steps by id. Starred steps are shown right under the task in the list (the user\'s focus for now).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -280,7 +280,7 @@ export const tools = [
         add: { type: 'array', items: { type: 'string' } },
         update: {
           type: 'array',
-          items: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, completed: { type: 'boolean' }, delete: { type: 'boolean' } }, required: ['id'] },
+          items: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, completed: { type: 'boolean' }, starred: { type: 'boolean', description: 'Show this step right under the task in the list' }, delete: { type: 'boolean' } }, required: ['id'] },
         },
       },
       required: ['task_id'],
@@ -294,6 +294,7 @@ export const tools = [
         const patch = {};
         if (u.title !== undefined) patch.title = String(u.title);
         if (u.completed !== undefined) patch.completed = u.completed || null; // completedAt is stamped by the store
+        if (u.starred !== undefined) patch.important = u.starred || null;
         update(state, s, patch);
       }
       let pos = stepsOf(state, t.id).reduce((m, s) => Math.max(m, s.data.position ?? 0), 0);

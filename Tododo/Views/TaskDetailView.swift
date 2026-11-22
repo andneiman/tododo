@@ -179,16 +179,40 @@ private struct StepRow: View {
                 .buttonStyle(.borderless)
                 .help("Delete Step")
             }
+            if showsStar {
+                Button {
+                    withAnimation(.snappy) { store.toggleStepStar(step.id) }
+                } label: {
+                    Image(systemName: step.isImportant ? "star.fill" : "star")
+                        .font(.system(size: 14))
+                        .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
+                }
+                .buttonStyle(.borderless)
+                .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
+            }
         }
         .onHover { hovering = $0 }
         .onAppear { text = step.title }
         .onChange(of: text) { _, new in store.rename(step.id, to: new) }
         .contextMenu {
+            Button(step.isImportant ? "Unstar Step" : "Star Step", systemImage: step.isImportant ? "star.slash" : "star") {
+                withAnimation(.snappy) { store.toggleStepStar(step.id) }
+            }
             Button("Delete Step", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
+    }
+
+    /// iPhone: always (no hover). Mac: when starred or under the pointer.
+    private var showsStar: Bool {
+        guard !step.isDone else { return step.isImportant }
+        #if os(iOS)
+        return true
+        #else
+        return step.isImportant || hovering
+        #endif
     }
 }
 

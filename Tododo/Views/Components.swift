@@ -160,6 +160,11 @@ struct TaskRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                if !task.isDone {
+                    ForEach(store.starredSteps(of: task.id)) { step in
+                        StarredStepLine(step: step)
+                    }
+                }
             }
 
             Spacer(minLength: 8)
@@ -418,5 +423,40 @@ extension Store {
                 withAnimation(.easeIn(duration: 0.25)) { self.liftingID = nil }
             }
         }
+    }
+}
+
+/// A starred step shown right under its task in a list: small circle to tick it off, quiet text.
+struct StarredStepLine: View {
+    @Environment(Store.self) private var store
+    let step: Record
+    @State private var ticking = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Button {
+                guard !ticking else { return }
+                withAnimation(.snappy(duration: 0.2)) { ticking = true }
+                let id = step.id
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    withAnimation(.taskLeave) { store.toggleStep(id) }
+                }
+            } label: {
+                Image(systemName: ticking ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundStyle(ticking ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Complete step")
+            Text(step.title)
+                .font(.subheadline)
+                .strikethrough(ticking, color: .secondary)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.top, 1)
     }
 }

@@ -77,7 +77,8 @@ final class Store {
         _ = add(.task) { $0.title = "To Do"; $0.isSection = true; $0.myDay = true }
         let call = add(.task) { $0.title = "Call the team about the release"; $0.myDay = true; $0.important = true; $0.listId = work }
         _ = add(.step) { $0.title = "Prepare the agenda"; $0.taskId = call; $0.completed = true }
-        _ = add(.step) { $0.title = "Send invites"; $0.taskId = call }
+        _ = add(.step) { $0.title = "Send invites"; $0.taskId = call; $0.important = true }
+        _ = add(.step) { $0.title = "Book a room"; $0.taskId = call }
         _ = add(.task) { $0.title = "Pay the heating bill"; $0.myDay = true }
         _ = add(.task) { $0.title = "Reply to emails"; $0.myDay = true }
         _ = add(.task) { $0.title = "Think About"; $0.isSection = true; $0.myDay = true; $0.color = "indigo" }
@@ -429,6 +430,15 @@ final class Store {
         d.position = nextPosition(steps(of: taskID))
         d.createdAt = now
         _ = create(.step, d)
+    }
+
+    /// Starred steps are the ones the user wants in front of them: shown right under the task in lists.
+    func toggleStepStar(_ id: String) {
+        update(id) { $0.important = $0.important == true ? nil : true }
+    }
+
+    func starredSteps(of taskID: String) -> [Record] {
+        steps(of: taskID).filter { $0.isImportant && !$0.isDone }
     }
 
     func toggleStep(_ id: String) {
