@@ -210,7 +210,16 @@ export const tools = [
       const patch = {};
       if (a.title !== undefined) patch.title = String(a.title).trim() || fail('Empty title');
       if (a.completed !== undefined) { patch.completed = a.completed || null; patch.completedAt = a.completed ? Date.now() : null; }
-      if (a.important !== undefined) patch.important = a.important || null;
+      if (a.important !== undefined) {
+        patch.important = a.important || null;
+        // Starring lifts the task to the very top of its list and of My Day, like in the apps.
+        if (a.important && !t.data.important && !t.data.completed && a.section === undefined) {
+          const others = live(state, 'task').filter((x) => x.id !== t.id);
+          const listId = a.list !== undefined ? resolveList(state, a.list) : t.data.listId;
+          patch.position = top(others.filter((x) => x.data.listId === listId), 'position');
+          if (t.data.myDay || a.my_day) patch.myDayPosition = top(others.filter((x) => x.data.myDay), 'myDayPosition');
+        }
+      }
       if (a.color !== undefined) {
         if (!COLORS.includes(a.color)) fail(`color must be one of: ${COLORS.join(', ')}`);
         patch.color = a.color === 'gray' ? null : a.color;

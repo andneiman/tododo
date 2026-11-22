@@ -163,7 +163,7 @@ struct TaskRow: View {
 
             if task.isImportant || hovering {
                 Button {
-                    store.toggleImportant(task.id)
+                    withAnimation(.snappy) { store.toggleImportant(task.id) }
                 } label: {
                     Image(systemName: task.isImportant ? "star.fill" : "star")
                         .foregroundStyle(task.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))

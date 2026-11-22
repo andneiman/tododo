@@ -329,8 +329,19 @@ final class Store {
         if done { doneTick += 1 }
     }
 
+    /// Starring a task also lifts it to the very top of its list (and of My Day, if it is there).
     func toggleImportant(_ id: String) {
-        update(id) { $0.important = $0.important == true ? nil : true }
+        guard let task = record(id) else { return }
+        let starring = !task.isImportant
+        let others = live(.task).filter { $0.id != id }
+        let listTop = topPosition(others.filter { self.listID(of: $0) == self.listID(of: task) })
+        let dayTop = topPosition(others.filter(\.isMyDay), myDay: true)
+        update(id) {
+            $0.important = starring ? true : nil
+            guard starring, !task.isDone else { return }
+            $0.position = listTop
+            if $0.myDay == true { $0.myDayPosition = dayTop }
+        }
     }
 
     func toggleMyDay(_ id: String) {

@@ -35,7 +35,11 @@ struct TaskDetailView: View {
     @ViewBuilder
     private var content: some View {
         if let task = store.record(taskID) {
+            #if os(macOS)
+            MacTaskPane(task: task, onClose: onClose)
+            #else
             TaskForm(task: task, onClose: onClose)
+            #endif
         } else {
             ContentUnavailableView("Task Deleted", systemImage: "trash")
         }
@@ -187,3 +191,177 @@ private struct StepRow: View {
         }
     }
 }
+
+#if os(macOS)
+/// The Mac details pane: one quiet column in the spirit of Microsoft To Do and Reminders,
+/// without grouped cards or switches.
+private struct MacTaskPane: View {
+    @Environment(Store.self) private var store
+    let task: Record
+    let onClose: () -> Void
+
+    @State private var title = ""
+    @State private var newStep = ""
+    @FocusState private var stepFocused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        CheckButton(done: task.isDone, size: 18) {
+                            withAnimation(.snappy) { store.toggleDone(task.id) }
+                        }
+                        .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
+                        TextField("Title", text: $title, prompt: Text("Title"), axis: .vertical)
+                            .labelsHidden()
+                            .textFieldStyle(.plain)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(task.isDone ? .secondary : .primary)
+                    }
+                    .padding(.bottom, 12)
+
+                    ForEach(store.steps(of: task.id)) { step in
+                        StepRow(step: step)
+                            .padding(.vertical, 3)
+                    }
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.tint)
+                            .frame(width: 22)
+                        TextField("Add Step", text: $newStep, prompt: Text("Add Step"))
+                            .labelsHidden()
+                            .textFieldStyle(.plain)
+                            .focused($stepFocused)
+                            .onSubmit(addStep)
+                    }
+                    .padding(.vertical, 5)
+
+                    Divider()
+                        .padding(.vertical, 12)
+
+                    PaneRow(
+                        icon: task.isMyDay ? "sun.max.fill" : "sun.max",
+                        title: task.isMyDay ? "Added to My Day" : "Add to My Day",
+                        tint: task.isMyDay ? .accentColor : nil
+                    ) {
+                        store.toggleMyDay(task.id)
+                    }
+                    PaneRow(
+                        icon: task.isImportant ? "star.fill" : "star",
+                        title: task.isImportant ? "Important" : "Mark as Important",
+                        tint: task.isImportant ? .orange : nil
+                    ) {
+                        withAnimation(.snappy) { store.toggleImportant(task.id) }
+                    }
+                    Menu {
+                        Button(Store.inboxName) { store.moveTask(task.id, toList: Store.inboxID) }
+                        if !store.lists.isEmpty { Divider() }
+                        ForEach(store.lists) { list in
+                            Button(list.title) { store.moveTask(task.id, toList: list.id) }
+                        }
+                    } label: {
+                        PaneLabel(icon: "list.bullet", title: store.listName(task.data.listId), tint: nil, trailing: "chevron.up.chevron.down")
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
+            }
+
+            Divider()
+            HStack {
+                Text(createdText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    store.deleteTask(task.id)
+                    onClose()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Delete Task")
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+        }
+        .onAppear { title = task.title }
+        .onChange(of: title) { _, new in
+            let flat = new.replacingOccurrences(of: "\n", with: " ")
+            if flat != new {
+                title = flat
+                return
+            }
+            store.rename(task.id, to: flat)
+        }
+    }
+
+    private var createdText: String {
+        guard let created = task.data.createdAt else { return "" }
+        let date = Date(timeIntervalSince1970: created / 1000)
+        return "Created \(date.formatted(date: .abbreviated, time: .omitted))"
+    }
+
+    private func addStep() {
+        store.addStep(to: task.id, title: newStep)
+        newStep = ""
+        DispatchQueue.main.async { stepFocused = true }
+    }
+}
+
+/// One action line in the Mac details pane: icon, text, a soft highlight on hover.
+private struct PaneRow: View {
+    let icon: String
+    let title: String
+    let tint: Color?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            PaneLabel(icon: icon, title: title, tint: tint, trailing: nil)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PaneLabel: View {
+    let icon: String
+    let title: String
+    let tint: Color?
+    let trailing: String?
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.secondary))
+                .frame(width: 22)
+            Text(title)
+                .foregroundStyle(tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.primary))
+            Spacer(minLength: 8)
+            if let trailing {
+                Image(systemName: trailing)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(hovering ? 0.06 : 0))
+        )
+        .padding(.horizontal, -6)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+    }
+}
+#endif
