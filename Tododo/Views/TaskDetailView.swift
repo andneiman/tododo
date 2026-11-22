@@ -92,7 +92,7 @@ private struct TaskForm: View {
                 Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in withAnimation(.taskLeave) { store.toggleMyDay(task.id) } })) {
                     Label("My Day", systemImage: "sun.max")
                 }
-                Toggle(isOn: Binding(get: { task.isImportant }, set: { _ in store.toggleImportant(task.id) })) {
+                Toggle(isOn: Binding(get: { task.isImportant }, set: { _ in store.star(task.id) })) {
                     Label("Important", systemImage: "star")
                 }
                 Picker(selection: listBinding) {
@@ -254,7 +254,7 @@ private struct MacTaskPane: View {
                         title: task.isImportant ? "Important" : "Mark as Important",
                         tint: task.isImportant ? .orange : nil
                     ) {
-                        withAnimation(.snappy) { store.toggleImportant(task.id) }
+                        store.star(task.id)
                     }
                     Menu {
                         Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }

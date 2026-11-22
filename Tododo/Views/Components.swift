@@ -166,7 +166,7 @@ struct TaskRow: View {
 
             if task.isImportant || hovering {
                 Button {
-                    withAnimation(.snappy) { store.toggleImportant(task.id) }
+                    store.star(task.id)
                 } label: {
                     Image(systemName: task.isImportant ? "star.fill" : "star")
                         .foregroundStyle(task.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
@@ -176,7 +176,7 @@ struct TaskRow: View {
             }
         }
         .padding(.vertical, rowPadding)
-        .opacity(completing ? 0.6 : 1)
+        .opacity(store.liftingID == task.id ? 0 : (completing ? 0.6 : 1))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onChange(of: task.isDone) { _, _ in completing = false }
@@ -184,7 +184,7 @@ struct TaskRow: View {
             #if os(iOS)
             // iPhone: swiping left stars the task (and lifts it to the top); delete lives in the long-press menu.
             Button(task.isImportant ? "Unstar" : "Star", systemImage: task.isImportant ? "star.slash" : "star.fill") {
-                withAnimation(.taskLeave) { store.toggleImportant(task.id) }
+                store.star(task.id)
             }
             .tint(.orange)
             #else
@@ -254,7 +254,7 @@ struct TaskMenu: View {
             withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
         }
         Button(task.isImportant ? "Remove from Important" : "Mark as Important", systemImage: "star") {
-            withAnimation(.taskLeave) { store.toggleImportant(task.id) }
+            store.star(task.id)
         }
         Menu("Move to", systemImage: "folder") {
             Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
@@ -401,4 +401,22 @@ struct SearchResultsView: View {
 extension Animation {
     /// How a task leaves (or joins) a list: completed, moved, unstarred, removed from My Day, deleted.
     static let taskLeave: Animation = .easeInOut(duration: 0.35)
+}
+
+extension Store {
+    /// Star / unstar with a tidy animation. Starring lifts the task to the top: the row
+    /// fades out where it is, the other rows slide down to make room, then it fades in at the top.
+    func star(_ id: String) {
+        guard let task = record(id), !task.isImportant, !task.isDone, liftingID == nil else {
+            withAnimation(.taskLeave) { toggleImportant(id) }
+            return
+        }
+        withAnimation(.easeOut(duration: 0.15)) { liftingID = id }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeInOut(duration: 0.35)) { self.toggleImportant(id) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.easeIn(duration: 0.25)) { self.liftingID = nil }
+            }
+        }
+    }
 }

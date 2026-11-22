@@ -20,6 +20,9 @@ final class Store {
     private(set) var doneTick = 0
     /// Changes made on this device that the server has not confirmed yet.
     private(set) var pendingCount = 0
+    /// UI only: a task that is being lifted to the top after starring. Its row is
+    /// hidden while the list rearranges, so it never slides over other rows.
+    var liftingID: String?
 
     @ObservationIgnored private var dirty: Set<String> = []
     @ObservationIgnored private var cursor = 0
