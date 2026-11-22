@@ -125,6 +125,10 @@ private struct TaskForm: View {
         }
         .formStyle(.grouped)
         .onAppear { title = task.title }
+        // A typed step is kept even without pressing return: on close, on Done, on switching tasks, on tapping away.
+        .onDisappear { saveDraftStep(for: task.id) }
+        .onChange(of: task.id) { old, _ in saveDraftStep(for: old) }
+        .onChange(of: stepFocused) { _, focused in if !focused { saveDraftStep(for: task.id) } }
         .onChange(of: title) { _, new in
             let flat = new.replacingOccurrences(of: "\n", with: " ")
             if flat != new {
@@ -155,6 +159,13 @@ private struct TaskForm: View {
         store.addStep(to: task.id, title: newStep)
         newStep = ""
         DispatchQueue.main.async { stepFocused = true }
+    }
+
+    private func saveDraftStep(for id: String) {
+        let text = newStep.trimmingCharacters(in: .whitespacesAndNewlines)
+        newStep = ""
+        guard !text.isEmpty, store.record(id) != nil else { return }
+        store.addStep(to: id, title: text)
     }
 }
 
@@ -320,6 +331,10 @@ private struct MacTaskPane: View {
             .padding(.vertical, 10)
         }
         .onAppear { title = task.title }
+        // A typed step is kept even without pressing return: on close, on Done, on switching tasks, on tapping away.
+        .onDisappear { saveDraftStep(for: task.id) }
+        .onChange(of: task.id) { old, _ in saveDraftStep(for: old) }
+        .onChange(of: stepFocused) { _, focused in if !focused { saveDraftStep(for: task.id) } }
         .onChange(of: title) { _, new in
             let flat = new.replacingOccurrences(of: "\n", with: " ")
             if flat != new {
@@ -340,6 +355,13 @@ private struct MacTaskPane: View {
         store.addStep(to: task.id, title: newStep)
         newStep = ""
         DispatchQueue.main.async { stepFocused = true }
+    }
+
+    private func saveDraftStep(for id: String) {
+        let text = newStep.trimmingCharacters(in: .whitespacesAndNewlines)
+        newStep = ""
+        guard !text.isEmpty, store.record(id) != nil else { return }
+        store.addStep(to: id, title: text)
     }
 }
 

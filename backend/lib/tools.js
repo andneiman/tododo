@@ -128,7 +128,7 @@ export const tools = [
       let key = 'position';
       if (a.view === 'my_day') { items = items.filter((t) => t.data.myDay); key = 'myDayPosition'; }
       else if (a.view === 'important') items = items.filter((t) => t.data.important && !t.data.isSection);
-      else if (a.view !== 'all') { const id = resolveList(state, a.list); items = items.filter((t) => t.data.listId === id); }
+      else if (a.view !== 'all') { const id = resolveList(state, a.list); items = items.filter((t) => t.data.listId === id && !(t.data.isSection && t.data.myDay)); }
       if (!a.include_completed) items = items.filter((t) => !t.data.completed);
       items.sort(a.view === 'all' || a.view === 'important'
         ? (x, y) => listName(state, x.data.listId).localeCompare(listName(state, y.data.listId)) || byPos('position')(x, y)
@@ -178,7 +178,7 @@ export const tools = [
         if (!title) fail('Empty title');
         const listId = resolveList(state, t.list);
         const all = live(state, 'task');
-        const inList = all.filter((x) => x.data.listId === listId);
+        const inList = all.filter((x) => x.data.listId === listId && !(x.data.isSection && x.data.myDay)); // My Day dividers are My Day's own
         const myDay = all.filter((x) => x.data.myDay);
         const secInList = t.section && inList.some((x) => x.data.isSection && norm(x.data.title) === norm(t.section));
         const secInDay = t.section && myDay.some((x) => x.data.isSection && norm(x.data.title) === norm(t.section));

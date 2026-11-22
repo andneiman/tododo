@@ -173,8 +173,9 @@ final class Store {
         switch scope {
         case .myDay: return t.isMyDay
         case .important: return t.isImportant && !t.isSection
-        case .inbox: return listID(of: t) == Self.inboxID
-        case .list(let id): return listID(of: t) == id
+        // Dividers made in My Day belong to My Day only; lists have their own.
+        case .inbox: return listID(of: t) == Self.inboxID && !(t.isSection && t.isMyDay)
+        case .list(let id): return listID(of: t) == id && !(t.isSection && t.isMyDay)
         }
     }
 
