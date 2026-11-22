@@ -3,6 +3,8 @@ import { mutate } from '../../lib/store.js';
 import { tokenOk } from '../../lib/auth.js';
 import { tools } from '../../lib/tools.js';
 
+// Read-only tools: ChatGPT runs these without asking for confirmation.
+const READ_ONLY = new Set(['get_overview', 'list_tasks', 'search_tasks', 'task_history']);
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS =
   'Personal to-do app "Tododo" (Microsoft To Do style). Lists hold tasks; tasks can have steps, an "important" flag and a "My Day" flag. ' +
@@ -25,7 +27,12 @@ async function rpc(msg) {
     case 'ping':
       return ok({});
     case 'tools/list':
-      return ok({ tools: tools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
+      return ok({ tools: tools.map(({ name, description, inputSchema }) => ({
+        name, description, inputSchema,
+        annotations: READ_ONLY.has(name)
+          ? { readOnlyHint: true, openWorldHint: false }
+          : { readOnlyHint: false, destructiveHint: name === 'delete_tasks', openWorldHint: false },
+      })) });
     case 'tools/call': {
       const tool = tools.find((t) => t.name === params?.name);
       if (!tool) return err(-32602, `Unknown tool: ${params?.name}`);
