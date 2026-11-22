@@ -176,7 +176,15 @@ struct TaskRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .swipeActions(edge: .trailing) {
+            #if os(iOS)
+            // iPhone: swiping left stars the task (and lifts it to the top); delete lives in the long-press menu.
+            Button(task.isImportant ? "Unstar" : "Star", systemImage: task.isImportant ? "star.slash" : "star.fill") {
+                withAnimation(.snappy) { store.toggleImportant(task.id) }
+            }
+            .tint(.orange)
+            #else
             Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(task.id) }
+            #endif
         }
         .swipeActions(edge: .leading) {
             Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
