@@ -204,7 +204,9 @@ struct TaskRow: View {
             }
             .tint(.orange)
         }
-        .contextMenu { TaskMenu(task: task) }
+        #if os(macOS)
+        .contextMenu { TaskMenu(task: task) }   // iPhone: long press only drags
+        #endif
     }
 
     /// Completing: tick + strike-through first, then the row glides out of the list.

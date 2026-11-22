@@ -194,12 +194,14 @@ private struct StepRow: View {
         .onHover { hovering = $0 }
         .onAppear { text = step.title }
         .onChange(of: text) { _, new in store.rename(step.id, to: new) }
+        #if os(macOS)
         .contextMenu {
             Button(step.isImportant ? "Unstar Step" : "Star Step", systemImage: step.isImportant ? "star.slash" : "star") {
                 withAnimation(.snappy) { store.toggleStepStar(step.id) }
             }
             Button("Delete Step", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
+        #endif
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }

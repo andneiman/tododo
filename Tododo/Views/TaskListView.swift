@@ -10,6 +10,7 @@ struct TaskListView: View {
     @State private var renamingSection: String?
     @State private var sectionText = ""
     @State private var justAdded: String?
+    @State private var editingSection: String?
     @FocusState private var adding: Bool
     @FocusState private var sectionFocused: Bool
 
@@ -104,6 +105,16 @@ struct TaskListView: View {
             if !focused { commitSection() }
         }
         .modifier(TaskInspector(selection: $selectedTask))
+        #if os(iOS)
+        .sheet(item: Binding(
+            get: { editingSection.map(TaskRef.init(id:)) },
+            set: { editingSection = $0?.id }
+        )) { ref in
+            SectionEditor(id: ref.id)
+                .presentationDetents([.height(260)])
+                .presentationDragIndicator(.visible)
+        }
+        #endif
     }
 
     // MARK: Rows
@@ -126,6 +137,7 @@ struct TaskListView: View {
             .padding(.top, sectionTopPadding)
             .padding(.bottom, sectionBottomPadding)
             .listRowSeparator(.hidden)
+            #if os(macOS)
             .contextMenu {
                 Picker("Color", selection: Binding(
                     get: { SectionColor(stored: item.data.color) },
@@ -142,6 +154,11 @@ struct TaskListView: View {
                 Divider()
                 Button("Delete Section", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
             }
+            #else
+            // iPhone: long press is for dragging only; a tap opens the section editor.
+            .contentShape(Rectangle())
+            .onTapGesture { editingSection = item.id }
+            #endif
             .swipeActions(edge: .trailing) {
                 Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
             }
@@ -246,3 +263,57 @@ struct TaskListView: View {
         store.rename(id, to: sectionText)
     }
 }
+
+#if os(iOS)
+/// iPhone editor for a section divider: name, color, delete.
+private struct SectionEditor: View {
+    @Environment(Store.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let id: String
+    @State private var name = ""
+
+    var body: some View {
+        let color = SectionColor(stored: store.record(id)?.data.color)
+        VStack(alignment: .leading, spacing: 18) {
+            TextField("Section Name", text: $name)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(color.color)
+                .submitLabel(.done)
+                .onSubmit { dismiss() }
+            HStack(spacing: 10) {
+                ForEach(SectionColor.allCases) { c in
+                    Button {
+                        store.setColor(id, to: c == .black ? nil : c.rawValue)
+                    } label: {
+                        Circle()
+                            .fill(c.color)
+                            .frame(width: 26, height: 26)
+                            .overlay {
+                                if c == color {
+                                    Circle().strokeBorder(.background, lineWidth: 2.5).padding(2)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(c.name)
+                }
+            }
+            Button("Delete Section", systemImage: "trash", role: .destructive) {
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.taskLeave) { store.deleteTask(id) }
+                }
+            }
+            .font(.body)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 28)
+        .onAppear { name = store.record(id)?.title ?? "" }
+        .onDisappear {
+            let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !t.isEmpty, store.record(id) != nil { store.rename(id, to: t) }
+        }
+    }
+}
+#endif
