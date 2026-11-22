@@ -174,13 +174,17 @@ private struct StepRow: View {
     let step: Record
     @State private var text = ""
     @State private var hovering = false
+    @FocusState private var editing: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             CheckButton(done: step.isDone, size: 16) { store.toggleStep(step.id) }
-            TextField("Step", text: $text, prompt: Text("Step"))
+            // Long steps wrap onto new lines instead of being cut off; Return still just ends editing.
+            TextField("Step", text: $text, prompt: Text("Step"), axis: .vertical)
                 .labelsHidden()
                 .textFieldStyle(.plain)
+                .lineLimit(1...)
+                .focused($editing)
                 .foregroundStyle(step.isDone ? .secondary : .primary)
             if hovering {
                 Button { store.deleteStep(step.id) } label: {
@@ -206,7 +210,14 @@ private struct StepRow: View {
         }
         .onHover { hovering = $0 }
         .onAppear { text = step.title }
-        .onChange(of: text) { _, new in store.rename(step.id, to: new) }
+        .onChange(of: text) { _, new in
+            if new.contains("\n") {
+                text = new.replacingOccurrences(of: "\n", with: "")
+                editing = false
+                return
+            }
+            store.rename(step.id, to: new)
+        }
         #if os(macOS)
         .contextMenu {
             Button(step.isImportant ? "Unstar Step" : "Star Step", systemImage: step.isImportant ? "star.slash" : "star") {
