@@ -129,7 +129,7 @@ struct TaskListView: View {
             .contextMenu {
                 Picker("Color", selection: Binding(
                     get: { SectionColor(stored: item.data.color) },
-                    set: { store.setColor(item.id, to: $0 == .gray ? nil : $0.rawValue) }
+                    set: { store.setColor(item.id, to: $0 == .black ? nil : $0.rawValue) }
                 )) {
                     ForEach(SectionColor.allCases) { c in
                         Label(c.name, systemImage: "circle.fill")

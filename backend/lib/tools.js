@@ -82,7 +82,7 @@ function top(items, key) {
   const pos = (r) => r.data[key] ?? r.data.position ?? 0;
   return items.length ? Math.min(...items.map(pos)) - 1 : 1;
 }
-const COLORS = ['gray', 'red', 'orange', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink', 'brown'];
+const COLORS = ['black', 'gray', 'red', 'orange', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink', 'brown'];
 const parseTitle = (raw) => {
   const t = String(raw ?? '').trim();
   const m = t.match(/^#+\s*(.+)$/);
@@ -209,7 +209,7 @@ export const tools = [
         important: { type: 'boolean' },
         my_day: { type: 'boolean' },
         list: { type: 'string', description: 'Move to this list (name or id)' },
-        color: { type: 'string', enum: COLORS, description: 'Text color of a section divider (gray is the default)' },
+        color: { type: 'string', enum: COLORS, description: 'Text color of a section divider (black is the default)' },
         section: { type: 'string', description: 'Move to the end of this section (in the task list, and in My Day if the section is there)' },
       },
       required: ['id'],
@@ -231,7 +231,7 @@ export const tools = [
       }
       if (a.color !== undefined) {
         if (!COLORS.includes(a.color)) fail(`color must be one of: ${COLORS.join(', ')}`);
-        patch.color = a.color === 'gray' ? null : a.color;
+        patch.color = a.color === 'black' ? null : a.color;
       }
       const others = live(state, 'task').filter((x) => x.id !== t.id);
       let listId = t.data.listId;

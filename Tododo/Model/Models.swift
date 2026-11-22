@@ -19,7 +19,7 @@ struct Payload: Codable, Equatable {
     var myDayPosition: Double?
     var isSection: Bool?       // task that is a visual divider ("To Do", "Think About")
     var color: String?
-    var deletedAt: Double?     // ms since 1970, when the task or step was deleted (server keeps deleted records)         // section divider text color (SectionColor raw value); nil = default gray
+    var deletedAt: Double?     // ms since 1970, when the task or step was deleted (server keeps deleted records)         // section divider text color (SectionColor raw value); nil = default black
     var createdAt: Double?
 }
 

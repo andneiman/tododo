@@ -273,13 +273,14 @@ extension View {
 // MARK: - Section colors
 
 enum SectionColor: String, CaseIterable, Identifiable {
-    case gray, red, orange, green, teal, blue, indigo, purple, pink, brown
+    case black, gray, red, orange, green, teal, blue, indigo, purple, pink, brown
 
     var id: String { rawValue }
     var name: String { rawValue.capitalized }
 
     var color: Color {
         switch self {
+        case .black: return .primary
         case .gray: return .secondary
         case .red: return .red
         case .orange: return .orange
@@ -294,7 +295,7 @@ enum SectionColor: String, CaseIterable, Identifiable {
     }
 
     init(stored: String?) {
-        self = stored.flatMap(SectionColor.init(rawValue:)) ?? .gray
+        self = stored.flatMap(SectionColor.init(rawValue:)) ?? .black
     }
 }
 
