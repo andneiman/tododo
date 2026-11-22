@@ -60,7 +60,7 @@ private struct TaskForm: View {
             Section {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     CheckButton(done: task.isDone, size: 19) {
-                        withAnimation(.snappy) { store.toggleDone(task.id) }
+                        withAnimation(.taskLeave) { store.toggleDone(task.id) }
                     }
                     .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 6 }
                     TextField("Title", text: $title, prompt: Text("Title"), axis: .vertical)
@@ -89,7 +89,7 @@ private struct TaskForm: View {
             }
 
             Section {
-                Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in store.toggleMyDay(task.id) })) {
+                Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in withAnimation(.taskLeave) { store.toggleMyDay(task.id) } })) {
                     Label("My Day", systemImage: "sun.max")
                 }
                 Toggle(isOn: Binding(get: { task.isImportant }, set: { _ in store.toggleImportant(task.id) })) {
@@ -147,7 +147,7 @@ private struct TaskForm: View {
                 guard let id = task.data.listId, store.record(id) != nil else { return Store.inboxID }
                 return id
             },
-            set: { store.moveTask(task.id, toList: $0) }
+            set: { id in withAnimation(.taskLeave) { store.moveTask(task.id, toList: id) } }
         )
     }
 
@@ -210,7 +210,7 @@ private struct MacTaskPane: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         CheckButton(done: task.isDone, size: 18) {
-                            withAnimation(.snappy) { store.toggleDone(task.id) }
+                            withAnimation(.taskLeave) { store.toggleDone(task.id) }
                         }
                         .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
                         TextField("Title", text: $title, prompt: Text("Title"), axis: .vertical)
@@ -247,7 +247,7 @@ private struct MacTaskPane: View {
                         title: task.isMyDay ? "Added to My Day" : "Add to My Day",
                         tint: task.isMyDay ? .accentColor : nil
                     ) {
-                        store.toggleMyDay(task.id)
+                        withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
                     }
                     PaneRow(
                         icon: task.isImportant ? "star.fill" : "star",
@@ -257,10 +257,10 @@ private struct MacTaskPane: View {
                         withAnimation(.snappy) { store.toggleImportant(task.id) }
                     }
                     Menu {
-                        Button(Store.inboxName) { store.moveTask(task.id, toList: Store.inboxID) }
+                        Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
                         if !store.lists.isEmpty { Divider() }
                         ForEach(store.lists) { list in
-                            Button(list.title) { store.moveTask(task.id, toList: list.id) }
+                            Button(list.title) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: list.id) } }
                         }
                     } label: {
                         PaneLabel(icon: "list.bullet", title: store.listName(task.data.listId), tint: nil, trailing: "chevron.up.chevron.down")

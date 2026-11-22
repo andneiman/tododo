@@ -141,16 +141,19 @@ struct TaskRow: View {
     let scope: Scope?
 
     @State private var hovering = false
+    /// Checked but not yet moved away: the row shows the tick for a beat, then leaves smoothly.
+    @State private var completing = false
+
+    private var shownDone: Bool { task.isDone || completing }
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            CheckButton(done: task.isDone) {
-                withAnimation(.snappy) { store.toggleDone(task.id) }
-            }
+            CheckButton(done: shownDone) { complete() }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
-                    .foregroundStyle(task.isDone ? .secondary : .primary)
+                    .strikethrough(completing, color: .secondary)
+                    .foregroundStyle(shownDone ? .secondary : .primary)
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
@@ -173,26 +176,45 @@ struct TaskRow: View {
             }
         }
         .padding(.vertical, rowPadding)
+        .opacity(completing ? 0.6 : 1)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        .onChange(of: task.isDone) { _, _ in completing = false }
         .swipeActions(edge: .trailing) {
             #if os(iOS)
             // iPhone: swiping left stars the task (and lifts it to the top); delete lives in the long-press menu.
             Button(task.isImportant ? "Unstar" : "Star", systemImage: task.isImportant ? "star.slash" : "star.fill") {
-                withAnimation(.snappy) { store.toggleImportant(task.id) }
+                withAnimation(.taskLeave) { store.toggleImportant(task.id) }
             }
             .tint(.orange)
             #else
-            Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(task.id) }
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                withAnimation(.taskLeave) { store.deleteTask(task.id) }
+            }
             #endif
         }
         .swipeActions(edge: .leading) {
             Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
-                store.toggleMyDay(task.id)
+                withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
             }
             .tint(.orange)
         }
         .contextMenu { TaskMenu(task: task) }
+    }
+
+    /// Completing: tick + strike-through first, then the row glides out of the list.
+    /// Reopening a completed task moves it back right away.
+    private func complete() {
+        guard !completing else { return }
+        guard !task.isDone else {
+            withAnimation(.taskLeave) { store.toggleDone(task.id) }
+            return
+        }
+        withAnimation(.snappy(duration: 0.2)) { completing = true }
+        let id = task.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            withAnimation(.taskLeave) { store.toggleDone(id) }
+        }
     }
 
     private var rowPadding: CGFloat {
@@ -226,22 +248,24 @@ struct TaskMenu: View {
 
     var body: some View {
         Button(task.isDone ? "Mark as Not Completed" : "Mark as Completed", systemImage: "checkmark.circle") {
-            store.toggleDone(task.id)
+            withAnimation(.taskLeave) { store.toggleDone(task.id) }
         }
         Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
-            store.toggleMyDay(task.id)
+            withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
         }
         Button(task.isImportant ? "Remove from Important" : "Mark as Important", systemImage: "star") {
-            store.toggleImportant(task.id)
+            withAnimation(.taskLeave) { store.toggleImportant(task.id) }
         }
         Menu("Move to", systemImage: "folder") {
-            Button(Store.inboxName) { store.moveTask(task.id, toList: Store.inboxID) }
+            Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
             ForEach(store.lists) { list in
-                Button(list.title) { store.moveTask(task.id, toList: list.id) }
+                Button(list.title) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: list.id) } }
             }
         }
         Divider()
-        Button("Delete Task", systemImage: "trash", role: .destructive) { store.deleteTask(task.id) }
+        Button("Delete Task", systemImage: "trash", role: .destructive) {
+            withAnimation(.taskLeave) { store.deleteTask(task.id) }
+        }
     }
 }
 
@@ -372,4 +396,9 @@ struct SearchResultsView: View {
         .hidesToolbarTitle()
         .modifier(TaskInspector(selection: $selectedTask))
     }
+}
+
+extension Animation {
+    /// How a task leaves (or joins) a list: completed, moved, unstarred, removed from My Day, deleted.
+    static let taskLeave: Animation = .easeInOut(duration: 0.35)
 }

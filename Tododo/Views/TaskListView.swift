@@ -140,10 +140,10 @@ struct TaskListView: View {
                 .pickerStyle(.palette)
                 Button("Rename Section", systemImage: "pencil") { startRenaming(item) }
                 Divider()
-                Button("Delete Section", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
+                Button("Delete Section", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
             }
             .swipeActions(edge: .trailing) {
-                Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(item.id) }
+                Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
             }
         } else {
             TaskRow(task: item, scope: scope)
