@@ -197,8 +197,10 @@ private struct StepRow: View {
                     Image(systemName: step.isImportant ? "star.fill" : "star")
                         .font(.system(size: 14))
                         .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.plain)
                 .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
             }
         }
