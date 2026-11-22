@@ -256,6 +256,7 @@ final class Store {
     private func remove(_ id: String) {
         guard var r = record(id) else { return }
         r.deleted = true
+        if r.kind == .task || r.kind == .step { r.data.deletedAt = now }
         commit(r)
     }
 
@@ -423,11 +424,17 @@ final class Store {
         d.title = title
         d.taskId = taskID
         d.position = nextPosition(steps(of: taskID))
+        d.createdAt = now
         _ = create(.step, d)
     }
 
     func toggleStep(_ id: String) {
-        update(id) { $0.completed = $0.completed == true ? nil : true }
+        let stamp = now
+        update(id) {
+            let done = $0.completed != true
+            $0.completed = done ? true : nil
+            $0.completedAt = done ? stamp : nil
+        }
     }
 
     func deleteStep(_ id: String) {

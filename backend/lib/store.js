@@ -18,8 +18,44 @@ export const backend = PG_URL ? 'postgres' : LOCAL ? 'file' : 'blob';
 
 // ---------- record helpers (shared by sync and tools) ----------
 
+// Tasks and steps always carry createdAt, completedAt while completed, and deletedAt while deleted,
+// whoever wrote them (an app, an older app version, or Claude). Times are ms since 1970.
+function stampTimes(kind, data, deleted, updatedAt, prev) {
+  if (kind !== 'task' && kind !== 'step') return [];
+  const added = [];
+  if (!data.createdAt) {
+    data.createdAt = prev?.data?.createdAt || updatedAt;
+    added.push('createdAt');
+  }
+  if (data.completed) {
+    if (!data.completedAt) {
+      data.completedAt = (prev?.data?.completed && prev.data.completedAt) || updatedAt;
+      added.push('completedAt');
+    }
+  } else if (data.completedAt) {
+    delete data.completedAt;
+    added.push('completedAt');
+  }
+  if (deleted) {
+    if (!data.deletedAt) {
+      data.deletedAt = (prev?.deleted && prev.data?.deletedAt) || updatedAt;
+      added.push('deletedAt');
+    }
+  } else if (data.deletedAt) {
+    delete data.deletedAt;
+    added.push('deletedAt');
+  }
+  return added;
+}
+
 export function setRecord(state, id, kind, data, deleted = false, updatedAt = Date.now(), ft) {
   const prev = state.records[id];
+  data = { ...data };
+  const stamped = stampTimes(kind, data, deleted, updatedAt, prev);
+  if (ft) {
+    ft = { ...ft };
+    for (const f of stamped) ft[f] = Math.max(ft[f] || 0, updatedAt);
+  }
   if (!ft) {
     // Stamp only the fields that actually changed.
     ft = { ...(prev?.ft || {}) };

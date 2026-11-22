@@ -23,15 +23,17 @@ export default async function handler(req, res) {
       const inc = { id: c.id, kind: c.kind, data: c.data || {}, ft: c.ft, updatedAt: Number(c.updatedAt) || 0, deleted: !!c.deleted };
       const cur = state.records[c.id];
       if (!cur) {
-        setRecord(state, inc.id, inc.kind, inc.data, inc.deleted, inc.updatedAt, inc.ft || {});
-        settled.add(c.id);
+        const stored = setRecord(state, inc.id, inc.kind, inc.data, inc.deleted, inc.updatedAt, inc.ft || {});
+        // The server may have filled in missing times: then the device needs the stored version back.
+        if (sameContent(stored, inc)) settled.add(c.id); else echo.add(c.id);
         continue;
       }
       const m = mergeRecords(cur, inc);
+      let stored = cur;
       if (!sameContent(m, cur) || m.updatedAt !== cur.updatedAt) {
-        setRecord(state, cur.id, cur.kind, m.data, m.deleted, m.updatedAt, m.ft);
+        stored = setRecord(state, cur.id, cur.kind, m.data, m.deleted, m.updatedAt, m.ft);
       }
-      if (sameContent(m, inc)) settled.add(c.id); else echo.add(c.id);
+      if (sameContent(stored, inc)) settled.add(c.id); else echo.add(c.id);
     }
     const changes = Object.values(state.records)
       .filter((r) => echo.has(r.id) || (r.seq > cursor && !settled.has(r.id)))

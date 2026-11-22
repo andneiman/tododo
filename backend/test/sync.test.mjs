@@ -15,7 +15,7 @@ ok(r.changes.length===1 && r.changes[0].data.title==='из блоба' && r.epoc
 ok(typeof r.now==='number','server time returned');
 const ep=r.epoch; let A=r.cursor, B=r.cursor; const t=Date.now();
 // phone creates task
-r=await S({epoch:ep,cursor:A,changes:[{id:'x1',kind:'task',data:{listId:INBOX,title:'Задача',position:5},ft:{listId:t,title:t,position:t},updatedAt:t,deleted:false}]}); A=r.cursor;
+r=await S({epoch:ep,cursor:A,changes:[{id:'x1',kind:'task',data:{listId:INBOX,title:'Задача',position:5,createdAt:t},ft:{listId:t,title:t,position:t,createdAt:t},updatedAt:t,deleted:false}]}); A=r.cursor;
 ok(r.changes.length===0,'push not echoed');
 r=await S({epoch:ep,cursor:B,changes:[]}); B=r.cursor; ok(r.changes.length===1&&r.changes[0].id==='x1','mac pulls it');
 // offline: phone renames (t+10), mac stars + completes (t+20), mac syncs first

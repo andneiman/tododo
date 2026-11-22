@@ -18,7 +18,8 @@ struct Payload: Codable, Equatable {
     var myDay: Bool?
     var myDayPosition: Double?
     var isSection: Bool?       // task that is a visual divider ("To Do", "Think About")
-    var color: String?         // section divider text color (SectionColor raw value); nil = default gray
+    var color: String?
+    var deletedAt: Double?     // ms since 1970, when the task or step was deleted (server keeps deleted records)         // section divider text color (SectionColor raw value); nil = default gray
     var createdAt: Double?
 }
 
@@ -40,6 +41,7 @@ extension Payload {
         if isSection != old.isSection { out.append("isSection") }
         if createdAt != old.createdAt { out.append("createdAt") }
         if color != old.color { out.append("color") }
+        if deletedAt != old.deletedAt { out.append("deletedAt") }
         return out
     }
 }

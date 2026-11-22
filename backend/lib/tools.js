@@ -41,6 +41,14 @@ function getTask(state, id) {
 function stepsOf(state, taskId) {
   return live(state, 'step').filter((s) => s.data.taskId === taskId).sort(byPos('position'));
 }
+const iso = (ms) => (ms ? new Date(ms).toISOString() : undefined);
+function times(r) {
+  return {
+    created_at: iso(r.data.createdAt),
+    ...(r.data.completedAt ? { completed_at: iso(r.data.completedAt) } : {}),
+    ...(r.deleted && r.data.deletedAt ? { deleted_at: iso(r.data.deletedAt) } : {}),
+  };
+}
 function view(state, t) {
   if (t.data.isSection) return { id: t.id, section: t.data.title, list: listName(state, t.data.listId), ...(t.data.myDay ? { my_day: true } : {}) };
   const steps = stepsOf(state, t.id).map((s) => ({ id: s.id, title: s.data.title, completed: !!s.data.completed }));
@@ -51,6 +59,7 @@ function view(state, t) {
     completed: !!t.data.completed,
     important: !!t.data.important,
     my_day: !!t.data.myDay,
+    ...times(t),
     ...(steps.length ? { steps } : {}),
   };
 }
@@ -284,7 +293,7 @@ export const tools = [
         if (u.delete) { remove(state, s); continue; }
         const patch = {};
         if (u.title !== undefined) patch.title = String(u.title);
-        if (u.completed !== undefined) patch.completed = u.completed || null;
+        if (u.completed !== undefined) patch.completed = u.completed || null; // completedAt is stamped by the store
         update(state, s, patch);
       }
       let pos = stepsOf(state, t.id).reduce((m, s) => Math.max(m, s.data.position ?? 0), 0);
@@ -399,6 +408,52 @@ export const tools = [
         return { day: a.day, brought_back: undeleted, reverted };
       }
       fail('Unknown action');
+    },
+  },
+  {
+    name: 'task_history',
+    description: 'Task history for analysis: every task (open, completed and, if asked, deleted) with created_at, completed_at and deleted_at (ISO, UTC), its list, flags and step counts. Filter by a time window on any of those dates. Use it for questions like "what did I finish last week", "how long do tasks stay open", "what did I add in October". Section dividers are left out.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        since: { type: 'string', description: 'ISO date or date-time; keep tasks with the chosen date on or after it' },
+        until: { type: 'string', description: 'ISO date or date-time; keep tasks with the chosen date before it' },
+        by: { type: 'string', enum: ['created', 'completed', 'deleted'], description: 'Which date since/until apply to (default created)' },
+        list: { type: 'string', description: 'Only this list (name or id)' },
+        include_deleted: { type: 'boolean', description: 'Also return deleted tasks (default false)' },
+        limit: { type: 'number', description: 'Max rows, newest first (default 2000)' },
+      },
+    },
+    run(state, a) {
+      const by = a.by || 'created';
+      const field = { created: 'createdAt', completed: 'completedAt', deleted: 'deletedAt' }[by] || 'createdAt';
+      const since = a.since ? Date.parse(a.since) : -Infinity;
+      const until = a.until ? Date.parse(a.until) : Infinity;
+      if (Number.isNaN(since) || Number.isNaN(until)) fail('since/until must be ISO dates, e.g. 2026-11-01');
+      const listId = a.list !== undefined ? resolveList(state, a.list) : null;
+      const steps = {};
+      for (const s of Object.values(state.records)) {
+        if (s.kind !== 'step' || s.deleted) continue;
+        const k = (steps[s.data.taskId] ||= { total: 0, done: 0 });
+        k.total++; if (s.data.completed) k.done++;
+      }
+      const rows = Object.values(state.records)
+        .filter((t) => t.kind === 'task' && !t.data.isSection && (a.include_deleted || by === 'deleted' || !t.deleted))
+        .filter((t) => !listId || t.data.listId === listId)
+        .filter((t) => { const v = t.data[field]; return v ? v >= since && v < until : (since === -Infinity && until === Infinity && by === 'created'); })
+        .sort((x, y) => (y.data[field] || 0) - (x.data[field] || 0))
+        .slice(0, Math.max(1, Math.min(Number(a.limit) || 2000, 5000)))
+        .map((t) => ({
+          title: t.data.title,
+          list: listName(state, t.data.listId),
+          status: t.deleted ? 'deleted' : t.data.completed ? 'completed' : 'open',
+          ...times(t),
+          ...(t.data.important ? { important: true } : {}),
+          ...(t.data.myDay ? { my_day: true } : {}),
+          ...(steps[t.id] ? { steps_done: steps[t.id].done, steps_total: steps[t.id].total } : {}),
+        }));
+      const count = (st) => rows.filter((r) => r.status === st).length;
+      return { count: rows.length, open: count('open'), completed: count('completed'), deleted: count('deleted'), tasks: rows };
     },
   },
 ];
