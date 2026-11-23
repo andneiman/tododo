@@ -1,4 +1,4 @@
-# Builds the iOS app in the cloud and uploads it to TestFlight. Run it by hand: Actions -> TestFlight -> Run workflow.
+# Builds the iOS and Mac apps in the cloud and uploads both to TestFlight. Run it by hand: Actions -> TestFlight -> Run workflow.
 # Needs four repository secrets (Settings -> Secrets and variables -> Actions):
 #   ASC_ISSUER_ID, ASC_KEY_ID, ASC_KEY_P8 (App Store Connect API key with Admin role), APPLE_TEAM_ID
 # and an app record with bundle id com.andneiman.tododo in App Store Connect.
@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 jobs:
   upload:
+    name: iOS
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -33,4 +34,32 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" Support/ExportOptions.plist
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tododo.xcarchive" \
             -exportOptionsPlist Support/ExportOptions.plist -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" | tail -40
+          rm -f "$KEY"
+
+  mac:
+    name: Mac
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive and upload (macOS)
+        run: |
+          set -o pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          # The everyday CI Mac build is ad-hoc signed and unsandboxed; the TestFlight one is signed by Apple and sandboxed.
+          xcodebuild -project Tododo.xcodeproj -scheme Tododo -destination 'generic/platform=macOS' \
+            -configuration Release -archivePath "$RUNNER_TEMP/Tododo-mac.xcarchive" archive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            "CODE_SIGN_IDENTITY[sdk=macosx*]=Apple Development" CODE_SIGN_ENTITLEMENTS=Support/Tododo-mac.entitlements \
+            ENABLE_HARDENED_RUNTIME=YES "${AUTH[@]}" | tail -40
+          /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" Support/ExportOptions.plist
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tododo-mac.xcarchive" \
+            -exportOptionsPlist Support/ExportOptions.plist -exportPath "$RUNNER_TEMP/export-mac" "${AUTH[@]}" | tail -40
           rm -f "$KEY"
