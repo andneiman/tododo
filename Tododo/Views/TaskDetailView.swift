@@ -180,9 +180,11 @@ private struct StepRow: View {
     #if os(macOS)
     static let circle: CGFloat = 14.5   // a touch smaller in the Mac pane
     static let alwaysField = false
+    static let doneStyle = HierarchicalShapeStyle.secondary
     #else
     static let circle: CGFloat = 16
     static let alwaysField = true
+    static let doneStyle = HierarchicalShapeStyle.tertiary   // clearly lighter than open steps
     #endif
 
     var body: some View {
@@ -193,7 +195,7 @@ private struct StepRow: View {
             if step.isDone {
                 // Completed steps read gray (text fields ignore the color on the Mac).
                 Text(step.title)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Self.doneStyle)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if Self.alwaysField {
                 // iPhone: long steps wrap onto new lines; Return just ends editing.
@@ -213,6 +215,7 @@ private struct StepRow: View {
             } else {
                 // Mac: plain text until clicked (a wrapping text field adds a stray empty line on the Mac).
                 Text(step.title)
+                    .foregroundStyle(Color.label)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture { text = step.title; macEditing = true }

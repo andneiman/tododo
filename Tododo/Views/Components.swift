@@ -235,9 +235,9 @@ struct TaskRow: View {
 
     /// Title, then the step count in gray: "Кипр (3 / 12)".
     private var titleText: some View {
-        var t = Text(task.title).foregroundColor(shownDone ? .secondary : .primary)
+        var t = Text(task.title).foregroundColor(shownDone ? .secondary : Color.label)
         if let p = store.stepProgress(of: task.id) {
-            t = t + Text(" (\(p.done) / \(p.total))").foregroundColor(.secondary)
+            t = t + Text(" (\(p.done)/\(p.total))").foregroundColor(Color.secondary.opacity(0.5))
         }
         return t.strikethrough(completing, color: .secondary)
     }
@@ -503,7 +503,7 @@ struct StarredStepLine: View {
                 .lineLimit(2)
         }
         .padding(.top, Self.gap)
-        .padding(.leading, 11)   // half a task circle to the right
+        .padding(.leading, 5)   // a touch to the right of the task text
     }
 
     // Mac: a point bigger and about 20% tighter than the iPhone sizes.
@@ -570,3 +570,15 @@ struct InlineTextField: NSViewRepresentable {
     }
 }
 #endif
+
+extension Color {
+    /// The system text color. On the Mac this is the same softened black as text fields,
+    /// so plain labels don't look darker or heavier than editable ones.
+    static var label: Color {
+        #if os(macOS)
+        Color(nsColor: .labelColor)
+        #else
+        Color(uiColor: .label)
+        #endif
+    }
+}
