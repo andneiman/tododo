@@ -283,7 +283,7 @@ private struct StepRow: View {
 
     /// iPhone: always (no hover). Mac: when starred or under the pointer.
     private var showsStar: Bool {
-        guard !step.isDone else { return step.isImportant }
+        guard !step.isDone else { return false }   // completed steps have no eye
         #if os(iOS)
         return true
         #else
