@@ -184,7 +184,6 @@ private struct StepRow: View {
     static let circle: CGFloat = 16
     static let alwaysField = true
     #endif
-    private var showsField: Bool { Self.alwaysField || macEditing }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -196,14 +195,21 @@ private struct StepRow: View {
                 Text(step.title)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-            } else if showsField {
-                // Long steps wrap onto new lines; Return just ends editing.
+            } else if Self.alwaysField {
+                // iPhone: long steps wrap onto new lines; Return just ends editing.
                 TextField("Step", text: $text, axis: .vertical)
                     .labelsHidden()
                     .textFieldStyle(.plain)
                     .lineLimit(1...)
                     .focused($editing)
-                    .onAppear { if !Self.alwaysField { editing = true } }
+            } else if macEditing {
+                #if os(macOS)
+                // Mac: a bare field (no stray empty line, no white box) while renaming.
+                InlineTextField(text: $text) {
+                    commit()
+                    macEditing = false
+                }
+                #endif
             } else {
                 // Mac: plain text until clicked (a wrapping text field adds a stray empty line on the Mac).
                 Text(step.title)
