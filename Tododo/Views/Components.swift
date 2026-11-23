@@ -384,6 +384,9 @@ struct TaskInspector: ViewModifier {
                 }
             }
             .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
+            // Same light gray as the sidebar (the default inspector gray is a touch darker).
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(Color(white: 0.965).ignoresSafeArea())
         }
         #else
         content.sheet(item: sheetItem) { ref in

@@ -14,7 +14,12 @@ struct RootView: View {
         } detail: {
             detail
         }
+        #if os(macOS)
+        // Mac: search sits at the top of the sidebar, aligned with it (like Reminders).
+        .searchable(text: $query, placement: .sidebar, prompt: "Search")
+        #else
         .searchable(text: $query, prompt: "Search")
+        #endif
         .onChange(of: selection) { _, _ in query = "" }
         #if os(macOS)
         .onAppear {
