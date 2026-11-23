@@ -67,6 +67,17 @@ struct TaskListView: View {
         .listStyle(.plain)
         .environment(\.defaultMinListRowHeight, 34)
         #endif
+        #if os(macOS)
+        // Opening the details narrows the list and re-wraps rows; keep the clicked task where you can see it.
+        .onChange(of: selectedTask) { _, id in
+            guard let id else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { proxy.scrollTo(id) }
+        }
+        // Completing the open task closes its details.
+        .onChange(of: selectedTask.flatMap { store.record($0)?.isDone }) { _, done in
+            if done == true { selectedTask = nil }
+        }
+        #endif
         .onChange(of: store.scrollTarget) { _, id in
             guard let id else { return }
             withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(id, anchor: .top) }
@@ -93,11 +104,6 @@ struct TaskListView: View {
         #if os(macOS)
         // The window toolbar is empty here: let the list start right at the top instead of under a blank strip.
         .ignoresSafeArea(.container, edges: .top)
-        // Opening the details narrows the list and re-wraps rows; keep the clicked task where you can see it.
-        .onChange(of: selectedTask) { _, id in
-            guard let id else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { proxy.scrollTo(id) }
-        }
         #endif
         .navigationTitle(store.title(of: scope))
         .hidesToolbarTitle()
