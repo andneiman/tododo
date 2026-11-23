@@ -75,14 +75,12 @@ struct SidebarView: View {
         Section {
             smartRow(.myDay, "My Day", "sun.max")
             smartRow(.important, "Important", "star")
-            smartRow(.inbox, Store.inboxName, "tray")
         }
 
-        let loose = store.lists(inGroup: nil)
-        if !loose.isEmpty {
-            Section("Lists") {
-                ForEach(loose) { listRow($0) }
-            }
+        // "Tasks" is just the first list: always there, can't be deleted.
+        Section("Lists") {
+            smartRow(.inbox, Store.inboxName, "list.bullet")
+            ForEach(store.lists(inGroup: nil)) { listRow($0) }
         }
 
         ForEach(store.groups) { group in
