@@ -322,9 +322,15 @@ final class Store {
     func toggleDone(_ id: String) {
         guard let r = record(id) else { return }
         let done = !r.isDone
+        // A reopened task comes back at the top of its list (and of My Day).
+        let others = live(.task).filter { $0.id != id }
+        let listTop = r.kind == .task ? topPosition(others.filter { self.listID(of: $0) == self.listID(of: r) }) : nil
+        let dayTop = r.kind == .task && r.isMyDay ? topPosition(others.filter(\.isMyDay), myDay: true) : nil
         update(id) {
             $0.completed = done ? true : nil
             $0.completedAt = done ? now : nil
+            if !done, let listTop { $0.position = listTop }
+            if !done, let dayTop { $0.myDayPosition = dayTop }
         }
         if done { doneTick += 1 }
     }
@@ -345,7 +351,8 @@ final class Store {
     }
 
     func toggleMyDay(_ id: String) {
-        let next = nextPosition(live(.task).filter(\.isMyDay), myDay: true)
+        // Everything that (re)appears in a list shows up at the top.
+        let next = topPosition(live(.task).filter { $0.isMyDay && $0.id != id }, myDay: true)
         update(id) {
             if $0.myDay == true {
                 $0.myDay = nil
@@ -373,7 +380,7 @@ final class Store {
 
     func moveTask(_ id: String, toList listID: String) {
         guard let r = record(id), self.listID(of: r) != listID else { return }
-        let next = nextPosition(live(.task).filter { self.listID(of: $0) == listID })
+        let next = topPosition(live(.task).filter { self.listID(of: $0) == listID })
         update(id) {
             $0.listId = listID
             $0.position = next

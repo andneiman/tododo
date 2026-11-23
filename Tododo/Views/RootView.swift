@@ -17,8 +17,6 @@ struct RootView: View {
         #if os(macOS)
         // Mac: search sits at the top of the sidebar, aligned with it (like Reminders).
         .searchable(text: $query, placement: .sidebar, prompt: "Search")
-        // No window toolbar: nothing lives there, so the empty strip above the list goes away.
-        .toolbar(.hidden, for: .windowToolbar)
         #else
         .searchable(text: $query, prompt: "Search")
         #endif

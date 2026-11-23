@@ -90,6 +90,10 @@ struct TaskListView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { addBar }
         .softScrollEdges()
+        #if os(macOS)
+        // The window toolbar is empty here: let the list start right at the top instead of under a blank strip.
+        .ignoresSafeArea(.container, edges: .top)
+        #endif
         .navigationTitle(store.title(of: scope))
         .hidesToolbarTitle()
         #if os(macOS)
