@@ -22,6 +22,10 @@ jobs:
           for v in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_P8 APPLE_TEAM_ID; do
             if [ -z "${!v}" ]; then echo "::error::Secret $v is not set"; exit 1; fi
           done
+      - name: Free up development certificates
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography 2>/dev/null || pip3 install --quiet pyjwt cryptography
+          python3 scripts/asc-revoke-ci-certs.py
       - name: Archive and upload
         run: |
           set -o pipefail
@@ -48,6 +52,10 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
+      - name: Free up development certificates
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography 2>/dev/null || pip3 install --quiet pyjwt cryptography
+          python3 scripts/asc-revoke-ci-certs.py
       - name: Archive and upload (macOS)
         run: |
           set -o pipefail
