@@ -222,7 +222,15 @@ export const tools = [
       const t = getTask(state, a.id);
       const patch = {};
       if (a.title !== undefined) patch.title = String(a.title).trim() || fail('Empty title');
-      if (a.completed !== undefined) { patch.completed = a.completed || null; patch.completedAt = a.completed ? Date.now() : null; }
+      if (a.completed !== undefined) {
+        patch.completed = a.completed || null; patch.completedAt = a.completed ? Date.now() : null;
+        // Reopened tasks come back at the top, like everything that (re)appears in a list.
+        if (!a.completed && t.data.completed) {
+          const rest = live(state, 'task').filter((x) => x.id !== t.id);
+          patch.position = top(rest.filter((x) => x.data.listId === t.data.listId), 'position');
+          if (t.data.myDay) patch.myDayPosition = top(rest.filter((x) => x.data.myDay), 'myDayPosition');
+        }
+      }
       if (a.important !== undefined) {
         patch.important = a.important || null;
         // Starring lifts the task to the very top of its list and of My Day, like in the apps.
@@ -242,12 +250,12 @@ export const tools = [
       let listId = t.data.listId;
       if (a.list !== undefined) {
         listId = resolveList(state, a.list);
-        if (listId !== t.data.listId) { patch.listId = listId; patch.position = slot(others.filter((x) => x.data.listId === listId), 'position'); }
+        if (listId !== t.data.listId) { patch.listId = listId; patch.position = top(others.filter((x) => x.data.listId === listId), 'position'); }
       }
       const willBeMyDay = a.my_day !== undefined ? a.my_day : !!t.data.myDay;
       if (a.my_day !== undefined && a.my_day !== !!t.data.myDay) {
         patch.myDay = a.my_day || null;
-        patch.myDayPosition = a.my_day ? slot(others.filter((x) => x.data.myDay), 'myDayPosition') : null;
+        patch.myDayPosition = a.my_day ? top(others.filter((x) => x.data.myDay), 'myDayPosition') : null;
       }
       if (a.section) {
         const inList = others.filter((x) => x.data.listId === listId);
