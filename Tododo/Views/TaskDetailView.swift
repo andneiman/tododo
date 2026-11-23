@@ -78,6 +78,7 @@ private struct TaskForm: View {
                         .focused($stepFocused)
                         .submitLabel(.done)
                         .onSubmit(addStep)
+                        .textInputAutocapitalization(.never)   // steps start small unless you press Shift
                 }
             }
 
@@ -204,6 +205,7 @@ private struct StepRow: View {
                     .textFieldStyle(.plain)
                     .lineLimit(1...)
                     .focused($editing)
+                    .textInputAutocapitalization(.never)
             } else if macEditing {
                 #if os(macOS)
                 // Mac: a bare field (no stray empty line, no white box) while renaming.
