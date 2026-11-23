@@ -188,7 +188,7 @@ private struct StepRow: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                TextField("Step", text: $text, prompt: Text("Step"), axis: .vertical)
+                TextField("Step", text: $text, axis: .vertical)
                     .labelsHidden()
                     .textFieldStyle(.plain)
                     .lineLimit(1...)
@@ -211,7 +211,7 @@ private struct StepRow: View {
             } label: {
                 Image(systemName: step.isImportant ? "eye.fill" : "eye")
                     .font(.system(size: 13))
-                    .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
+                    .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.primary.opacity(0.7)) : AnyShapeStyle(.tertiary))
                     .frame(width: 26, height: 20)
                     .contentShape(Rectangle())
             }
@@ -224,14 +224,16 @@ private struct StepRow: View {
         }
         .onHover { hovering = $0 }
         .onAppear { text = step.title }
+        .onChange(of: step.title) { _, new in if !editing { text = new } }
         .onChange(of: text) { _, new in
             if new.contains("\n") {
                 text = new.replacingOccurrences(of: "\n", with: "")
                 editing = false
-                return
             }
-            store.rename(step.id, to: new)
         }
+        // Saved when editing ends (Return, tapping another step, closing): an emptied step is deleted.
+        .onChange(of: editing) { _, now in if !now { commit() } }
+        .onDisappear { commit() }
         #if os(macOS)
         .contextMenu {
             Button(step.isImportant ? "Hide from List" : "Show in List", systemImage: step.isImportant ? "eye.slash" : "eye") {
@@ -243,6 +245,13 @@ private struct StepRow: View {
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
+    }
+
+    private func commit() {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard store.record(step.id) != nil else { return }
+        if t.isEmpty { store.deleteStep(step.id) }
+        else if t != step.title { store.rename(step.id, to: t) }
     }
 
     /// iPhone: always (no hover). Mac: when starred or under the pointer.
