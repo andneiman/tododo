@@ -90,7 +90,7 @@ struct ListHeader: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.top, 14)
+        .padding(.top, 4)
         .padding(.bottom, 10)
         .listRowSeparator(.hidden)
         .selectionDisabled()
