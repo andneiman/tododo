@@ -272,6 +272,7 @@ private struct MacTaskPane: View {
     @Environment(Store.self) private var store
     let task: Record
     let onClose: () -> Void
+    @State private var paneHeight: CGFloat = 0
 
     @State private var title = ""
     @State private var newStep = ""
@@ -352,14 +353,11 @@ private struct MacTaskPane: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
                 .padding(.bottom, 20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: paneHeight, alignment: .topLeading)
                 // Clicking empty space in the pane closes it.
                 .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
-                Color.clear
-                    .frame(maxWidth: .infinity, minHeight: 400)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onClose() }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
 
             Divider()
             HStack {
