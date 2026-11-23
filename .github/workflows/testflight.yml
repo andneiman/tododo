@@ -38,6 +38,7 @@ jobs:
 
   mac:
     name: Mac
+    needs: upload   # one at a time: parallel jobs race to create signing certificates
     runs-on: macos-26
     timeout-minutes: 30
     env:
