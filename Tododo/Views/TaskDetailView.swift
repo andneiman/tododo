@@ -180,12 +180,18 @@ private struct StepRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             CheckButton(done: step.isDone, size: 16) { store.toggleStep(step.id) }
             // Long steps wrap onto new lines instead of being cut off; Return still just ends editing.
-            TextField("Step", text: $text, prompt: Text("Step"), axis: .vertical)
-                .labelsHidden()
-                .textFieldStyle(.plain)
-                .lineLimit(1...)
-                .focused($editing)
-                .foregroundStyle(step.isDone ? .secondary : .primary)
+            if step.isDone {
+                // Completed steps read gray (text fields ignore the color on the Mac).
+                Text(step.title)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                TextField("Step", text: $text, prompt: Text("Step"), axis: .vertical)
+                    .labelsHidden()
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...)
+                    .focused($editing)
+            }
             if hovering {
                 Button { store.deleteStep(step.id) } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -322,6 +328,13 @@ private struct MacTaskPane: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
                 .padding(.bottom, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Clicking empty space in the pane closes it.
+                .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 400)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onClose() }
             }
 
             Divider()
@@ -343,6 +356,8 @@ private struct MacTaskPane: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
         }
+        // Clicking empty space in the pane closes it.
+        .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
         .onAppear { title = task.title }
         // A typed step is kept even without pressing return: on close, on Done, on switching tasks, on tapping away.
         .onDisappear { saveDraftStep(for: task.id) }

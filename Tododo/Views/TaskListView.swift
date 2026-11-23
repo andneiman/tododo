@@ -25,6 +25,8 @@ struct TaskListView: View {
         List {
             #if os(macOS)
             ListHeader(title: store.title(of: scope), subtitle: subtitle, count: openCount)
+                .contentShape(Rectangle())
+                .onTapGesture { selectedTask = nil }   // click outside the tasks closes the details
             #endif
 
             ForEach(tasks.open) { item in

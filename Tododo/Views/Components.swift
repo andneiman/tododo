@@ -144,6 +144,7 @@ struct TaskRow: View {
 
     @State private var hovering = false
     @State private var titleDraft = ""
+    @State private var editingTitle = false
     @FocusState private var titleFocused: Bool
     /// Checked but not yet moved away: the row shows the tick for a beat, then leaves smoothly.
     @State private var completing = false
@@ -214,24 +215,29 @@ struct TaskRow: View {
     /// iPhone: plain text (tap opens the task). Mac: edit the title right in the row.
     @ViewBuilder private var titleView: some View {
         #if os(macOS)
-        TextField("Task", text: $titleDraft, axis: .vertical)
-            .textFieldStyle(.plain)
-            .labelsHidden()
-            .lineLimit(1...)
-            .focused($titleFocused)
-            .strikethrough(completing, color: .secondary)
-            .foregroundStyle(shownDone ? .secondary : .primary)
-            .onAppear { titleDraft = task.title }
-            .onChange(of: task.title) { _, new in if !titleFocused { titleDraft = new } }
-            .onChange(of: titleFocused) { _, focused in
-                if focused { onEditTitle?() } else { commitTitle() }
-            }
-            .onChange(of: titleDraft) { _, new in
-                if new.contains("\n") {
-                    titleDraft = new.replacingOccurrences(of: "\n", with: "")
-                    titleFocused = false
+        if editingTitle {
+            // Single-line plain field: no white box inside the highlighted row.
+            TextField("Task", text: $titleDraft)
+                .textFieldStyle(.plain)
+                .labelsHidden()
+                .focused($titleFocused)
+                .onSubmit { titleFocused = false }
+                .onAppear { titleFocused = true }
+                .onChange(of: titleFocused) { _, focused in
+                    if !focused { commitTitle(); editingTitle = false }
                 }
-            }
+        } else {
+            Text(task.title)
+                .strikethrough(completing, color: .secondary)
+                .foregroundStyle(shownDone ? .secondary : .primary)
+                .onTapGesture {
+                    // Click the title to rename it right here (open tasks); the row gets selected too.
+                    onEditTitle?()
+                    guard !task.isDone else { return }
+                    titleDraft = task.title
+                    editingTitle = true
+                }
+        }
         #else
         Text(task.title)
             .strikethrough(completing, color: .secondary)
@@ -241,7 +247,7 @@ struct TaskRow: View {
 
     private func commitTitle() {
         let t = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        if t.isEmpty || t == task.title { titleDraft = task.title; return }
+        if t.isEmpty || t == task.title { return }
         store.rename(task.id, to: t)
     }
 
@@ -321,11 +327,12 @@ struct SelectableRow: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .onTapGesture { selection = selection == id ? nil : id }
+            .onTapGesture { selection = id }
             .listRowBackground(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selection == id ? Color.accentColor.opacity(0.12) : Color.clear)
+                    .fill(selection == id ? Color.primary.opacity(0.06) : Color.clear)
                     .padding(.horizontal, 6)
             )
     }
