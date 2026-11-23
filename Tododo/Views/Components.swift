@@ -20,11 +20,8 @@ extension View {
     @ViewBuilder
     func softScrollEdges() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            #if os(macOS)
-            self.scrollEdgeEffectStyle(.soft, for: .all)
-            #else
+            // Bottom only: on the Mac the list runs up to the window top (no toolbar), so a top fade would hide the title.
             self.scrollEdgeEffectStyle(.soft, for: .bottom)
-            #endif
         } else {
             self
         }
@@ -93,7 +90,7 @@ struct ListHeader: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.top, 4)
+        .padding(.top, 14)
         .padding(.bottom, 10)
         .listRowSeparator(.hidden)
         .selectionDisabled()
@@ -145,7 +142,6 @@ struct TaskRow: View {
     @State private var hovering = false
     @State private var titleDraft = ""
     @State private var editingTitle = false
-    @FocusState private var titleFocused: Bool
     /// Checked but not yet moved away: the row shows the tick for a beat, then leaves smoothly.
     @State private var completing = false
 
@@ -218,15 +214,10 @@ struct TaskRow: View {
         #if os(macOS)
         if editingTitle {
             // Single-line plain field: no white box inside the highlighted row.
-            TextField("Task", text: $titleDraft)
-                .textFieldStyle(.plain)
-                .labelsHidden()
-                .focused($titleFocused)
-                .onSubmit { titleFocused = false }
-                .onAppear { titleFocused = true }
-                .onChange(of: titleFocused) { _, focused in
-                    if !focused { commitTitle(); editingTitle = false }
-                }
+            InlineTextField(text: $titleDraft) {
+                commitTitle()
+                editingTitle = false
+            }
         } else {
             titleText
                 .onTapGesture {
@@ -337,7 +328,7 @@ struct SelectableRow: ViewModifier {
             .onTapGesture { selection = id }
             .listRowBackground(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selection == id ? Color.primary.opacity(0.06) : Color.clear)
+                    .fill(selection == id ? Color.primary.opacity(0.035) : Color.clear)
                     .padding(.horizontal, 6)
             )
     }
@@ -526,3 +517,56 @@ struct StarredStepLine: View {
     static let gap: CGFloat = 1
     #endif
 }
+
+#if os(macOS)
+import AppKit
+
+/// A bare text field for renaming in place on the Mac: just a cursor in the text, no white editing box.
+struct InlineTextField: NSViewRepresentable {
+    @Binding var text: String
+    let onEnd: () -> Void
+
+    func makeNSView(context: Context) -> NSTextField {
+        let f = NSTextField(string: text)
+        f.isBordered = false
+        f.drawsBackground = false
+        f.backgroundColor = .clear
+        f.focusRingType = .none
+        f.font = .systemFont(ofSize: NSFont.systemFontSize)
+        f.lineBreakMode = .byTruncatingTail
+        f.cell?.usesSingleLineMode = true
+        f.delegate = context.coordinator
+        DispatchQueue.main.async {
+            f.window?.makeFirstResponder(f)
+            if let editor = f.currentEditor() as? NSTextView {
+                editor.drawsBackground = false
+                editor.backgroundColor = .clear
+                editor.selectedRange = NSRange(location: (f.stringValue as NSString).length, length: 0)
+            }
+        }
+        return f
+    }
+
+    func updateNSView(_ f: NSTextField, context: Context) {
+        if f.stringValue != text, f.currentEditor() == nil { f.stringValue = text }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: InlineTextField
+        init(_ p: InlineTextField) { parent = p }
+        func controlTextDidChange(_ n: Notification) {
+            if let f = n.object as? NSTextField { parent.text = f.stringValue }
+        }
+        func controlTextDidEndEditing(_ n: Notification) { parent.onEnd() }
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
+            if sel == #selector(NSResponder.cancelOperation(_:)) {
+                control.window?.makeFirstResponder(nil)
+                return true
+            }
+            return false
+        }
+    }
+}
+#endif
