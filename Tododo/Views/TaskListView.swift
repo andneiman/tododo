@@ -96,8 +96,6 @@ struct TaskListView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { addBar }
         .softScrollEdges()
-        #if os(macOS)
-        #endif
         .navigationTitle(store.title(of: scope))
         .hidesToolbarTitle()
         #if os(macOS)
