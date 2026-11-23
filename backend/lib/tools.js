@@ -256,6 +256,8 @@ export const tools = [
       if (a.my_day !== undefined && a.my_day !== !!t.data.myDay) {
         patch.myDay = a.my_day || null;
         patch.myDayPosition = a.my_day ? top(others.filter((x) => x.data.myDay), 'myDayPosition') : null;
+        // Added to My Day: it also goes to the top of its own list.
+        if (a.my_day && !t.data.completed && !t.data.isSection) patch.position = top(others.filter((x) => x.data.listId === t.data.listId), 'position');
       }
       if (a.section) {
         const inList = others.filter((x) => x.data.listId === listId);

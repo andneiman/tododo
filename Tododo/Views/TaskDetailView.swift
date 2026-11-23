@@ -87,7 +87,7 @@ private struct TaskForm: View {
             }
 
             Section {
-                Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in withAnimation(.taskLeave) { store.toggleMyDay(task.id) } })) {
+                Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in store.myDay(task.id) })) {
                     Label("My Day", systemImage: "sun.max")
                 }
                 Toggle(isOn: Binding(get: { task.isImportant }, set: { _ in store.star(task.id) })) {
@@ -352,7 +352,7 @@ private struct MacTaskPane: View {
                         title: task.isMyDay ? "Added to My Day" : "Add to My Day",
                         tint: task.isMyDay ? .accentColor : nil
                     ) {
-                        withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
+                        store.myDay(task.id)
                     }
                     PaneRow(
                         icon: task.isImportant ? "star.fill" : "star",

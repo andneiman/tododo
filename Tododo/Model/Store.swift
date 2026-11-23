@@ -352,7 +352,11 @@ final class Store {
 
     func toggleMyDay(_ id: String) {
         // Everything that (re)appears in a list shows up at the top.
-        let next = topPosition(live(.task).filter { $0.isMyDay && $0.id != id }, myDay: true)
+        guard let task = record(id) else { return }
+        let others = live(.task).filter { $0.id != id }
+        let next = topPosition(others.filter(\.isMyDay), myDay: true)
+        // Added to My Day: it also goes to the top of its own list (like starring).
+        let listTop = topPosition(others.filter { self.listID(of: $0) == self.listID(of: task) })
         update(id) {
             if $0.myDay == true {
                 $0.myDay = nil
@@ -360,6 +364,7 @@ final class Store {
             } else {
                 $0.myDay = true
                 $0.myDayPosition = next
+                if !task.isDone && !task.isSection { $0.position = listTop }
             }
         }
     }

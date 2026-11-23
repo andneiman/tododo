@@ -169,6 +169,12 @@ struct TaskRow: View {
 
             Spacer(minLength: 8)
 
+            // In My Day (outline sun, orange) — instead of a "My Day" caption. Not shown inside My Day itself.
+            if task.isMyDay && scope != .myDay && !task.isDone {
+                Image(systemName: "sun.max")
+                    .foregroundStyle(Color.orange)
+                    .accessibilityLabel("In My Day")
+            }
             if task.isImportant || hovering {
                 Button {
                     store.star(task.id)
@@ -200,7 +206,7 @@ struct TaskRow: View {
         }
         .swipeActions(edge: .leading) {
             Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
-                withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
+                store.myDay(task.id)
             }
             .tint(.orange)
         }
@@ -281,7 +287,6 @@ struct TaskRow: View {
             if case .myDay = scope { showsList = false }
         }
         if showsList { parts.append(store.listName(task.data.listId)) }
-        if task.isMyDay && scope != .myDay { parts.append("My Day") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -296,7 +301,7 @@ struct TaskMenu: View {
             withAnimation(.taskLeave) { store.toggleDone(task.id) }
         }
         Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
-            withAnimation(.taskLeave) { store.toggleMyDay(task.id) }
+            store.myDay(task.id)
         }
         Button(task.isImportant ? "Remove from Important" : "Mark as Important", systemImage: "star") {
             store.star(task.id)
@@ -460,9 +465,22 @@ extension Store {
             withAnimation(.taskLeave) { toggleImportant(id) }
             return
         }
+        lift(id) { self.toggleImportant(id) }
+    }
+
+    /// Add to / remove from My Day. Adding lifts the task to the top of its list, same tidy animation as starring.
+    func myDay(_ id: String) {
+        guard let task = record(id), !task.isMyDay, !task.isDone, liftingID == nil else {
+            withAnimation(.taskLeave) { toggleMyDay(id) }
+            return
+        }
+        lift(id) { self.toggleMyDay(id) }
+    }
+
+    private func lift(_ id: String, change: @escaping () -> Void) {
         withAnimation(.easeOut(duration: 0.15)) { liftingID = id }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            withAnimation(.easeInOut(duration: 0.35)) { self.toggleImportant(id) }
+            withAnimation(.easeInOut(duration: 0.35)) { change() }
             self.scrollTarget = id
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 withAnimation(.easeIn(duration: 0.25)) { self.liftingID = nil }
