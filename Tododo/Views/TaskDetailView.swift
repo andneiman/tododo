@@ -198,9 +198,9 @@ private struct StepRow: View {
                 Button {
                     withAnimation(.snappy) { store.toggleStepStar(step.id) }
                 } label: {
-                    Image(systemName: step.isImportant ? "star.fill" : "star")
+                    Image(systemName: step.isImportant ? "eye.fill" : "eye")
                         .font(.system(size: 14))
-                        .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
+                        .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
                 }
@@ -220,7 +220,7 @@ private struct StepRow: View {
         }
         #if os(macOS)
         .contextMenu {
-            Button(step.isImportant ? "Unstar Step" : "Star Step", systemImage: step.isImportant ? "star.slash" : "star") {
+            Button(step.isImportant ? "Hide from List" : "Show in List", systemImage: step.isImportant ? "eye.slash" : "eye") {
                 withAnimation(.snappy) { store.toggleStepStar(step.id) }
             }
             Button("Delete Step", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
