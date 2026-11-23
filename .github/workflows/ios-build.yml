@@ -6,7 +6,27 @@ on:
 permissions:
   contents: write
 jobs:
+  # Every push: a quick compile check of both apps on one machine (~5 min).
+  quick:
+    if: github.event_name == 'push'
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild -project Tododo.xcodeproj -target Tododo -sdk iphonesimulator \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build > ios.log 2>&1 || true
+          grep -q "BUILD SUCCEEDED" ios.log || { grep -n -B2 -A6 "error:" ios.log | head -100; exit 1; }
+      - name: Build for macOS
+        run: |
+          xcodebuild -project Tododo.xcodeproj -target Tododo -sdk macosx \
+            -configuration Release build > mac.log 2>&1 || true
+          grep -q "BUILD SUCCEEDED" mac.log || { grep -n -B2 -A6 "error:" mac.log | head -100; exit 1; }
+
+  # Full check before a release (run by hand): screenshots of every screen, two-app sync test, server tests on Postgres.
   ios:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 25
     steps:
@@ -52,6 +72,7 @@ jobs:
           git add . && git commit -q -m "Screenshots for ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
   mac:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 25
     steps:
