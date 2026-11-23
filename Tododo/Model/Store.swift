@@ -23,6 +23,8 @@ final class Store {
     /// UI only: a task that is being lifted to the top after starring. Its row is
     /// hidden while the list rearranges, so it never slides over other rows.
     var liftingID: String?
+    /// UI only: a task the list should scroll to (e.g. just starred and lifted to the top).
+    var scrollTarget: String?
 
     @ObservationIgnored private var dirty: Set<String> = []
     @ObservationIgnored private var cursor = 0

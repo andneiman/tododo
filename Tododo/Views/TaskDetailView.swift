@@ -175,51 +175,69 @@ private struct StepRow: View {
     @State private var text = ""
     @State private var hovering = false
     @FocusState private var editing: Bool
+    @State private var macEditing = false
+
+    #if os(macOS)
+    static let circle: CGFloat = 14.5   // a touch smaller in the Mac pane
+    static let alwaysField = false
+    #else
+    static let circle: CGFloat = 16
+    static let alwaysField = true
+    #endif
+    private var showsField: Bool { Self.alwaysField || macEditing }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            CheckButton(done: step.isDone, size: 16) { store.toggleStep(step.id) }
+            CheckButton(done: step.isDone, size: Self.circle) { store.toggleStep(step.id) }
                 // The circle's middle lines up with the middle of the first text line.
                 .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
-            // Long steps wrap onto new lines instead of being cut off; Return still just ends editing.
             if step.isDone {
                 // Completed steps read gray (text fields ignore the color on the Mac).
                 Text(step.title)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
+            } else if showsField {
+                // Long steps wrap onto new lines; Return just ends editing.
                 TextField("Step", text: $text, axis: .vertical)
                     .labelsHidden()
                     .textFieldStyle(.plain)
                     .lineLimit(1...)
                     .focused($editing)
-            }
-            #if os(macOS)
-            // Always laid out, only shown on hover, so the row never changes size.
-            Button { store.deleteStep(step.id) } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.borderless)
-            .help("Delete Step")
-            .opacity(hovering ? 1 : 0)
-            .allowsHitTesting(hovering)
-            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
-            #endif
-            Button {
-                withAnimation(.snappy) { store.toggleStepStar(step.id) }
-            } label: {
-                Image(systemName: step.isImportant ? "eye.fill" : "eye")
-                    .font(.system(size: 13))
-                    .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.primary.opacity(0.7)) : AnyShapeStyle(.tertiary))
-                    .frame(width: 26, height: 20)
+                    .onAppear { if !Self.alwaysField { editing = true } }
+            } else {
+                // Mac: plain text until clicked (a wrapping text field adds a stray empty line on the Mac).
+                Text(step.title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
+                    .onTapGesture { text = step.title; macEditing = true }
             }
-            .buttonStyle(.plain)
-            .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
-            // Always laid out (hidden when not needed), so hovering never shifts the row.
-            .opacity(showsStar ? 1 : 0)
-            .allowsHitTesting(showsStar)
+            HStack(spacing: 2) {
+                #if os(macOS)
+                // Always laid out, only shown on hover, so the row never changes size.
+                Button { store.deleteStep(step.id) } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.borderless)
+                .help("Delete Step")
+                .opacity(hovering ? 1 : 0)
+                .allowsHitTesting(hovering)
+                #endif
+                Button {
+                    withAnimation(.snappy) { store.toggleStepStar(step.id) }
+                } label: {
+                    Image(systemName: step.isImportant ? "eye.fill" : "eye")
+                        .font(.system(size: 13))
+                        .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.primary.opacity(0.7)) : AnyShapeStyle(.tertiary))
+                        .frame(width: 26, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
+                // Always laid out (hidden when not needed), so hovering never shifts the row.
+                .opacity(showsStar ? 1 : 0)
+                .allowsHitTesting(showsStar)
+            }
             .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
         }
         .onHover { hovering = $0 }
@@ -232,7 +250,7 @@ private struct StepRow: View {
             }
         }
         // Saved when editing ends (Return, tapping another step, closing): an emptied step is deleted.
-        .onChange(of: editing) { _, now in if !now { commit() } }
+        .onChange(of: editing) { _, now in if !now { commit(); macEditing = false } }
         .onDisappear { commit() }
         #if os(macOS)
         .contextMenu {
@@ -358,6 +376,19 @@ private struct MacTaskPane: View {
                 .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
+            .overlay(alignment: .topTrailing) {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Close (Esc)")
+                .padding(.top, 8)
+                .padding(.trailing, 10)
+            }
 
             Divider()
             HStack {

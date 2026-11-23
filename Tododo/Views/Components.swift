@@ -168,12 +168,7 @@ struct TaskRow: View {
                         StarredStepLine(step: step)
                     }
                 }
-                // Step count sits under the steps shown in the list.
-                if let p = store.stepProgress(of: task.id) {
-                    Text("\(p.done) of \(p.total)")
-                        .font(StarredStepLine.countFont)
-                        .foregroundStyle(.secondary)
-                }
+
             }
 
             Spacer(minLength: 8)
@@ -233,9 +228,7 @@ struct TaskRow: View {
                     if !focused { commitTitle(); editingTitle = false }
                 }
         } else {
-            Text(task.title)
-                .strikethrough(completing, color: .secondary)
-                .foregroundStyle(shownDone ? .secondary : .primary)
+            titleText
                 .onTapGesture {
                     // Click the title to rename it right here (open tasks); the row gets selected too.
                     onEditTitle?()
@@ -245,10 +238,17 @@ struct TaskRow: View {
                 }
         }
         #else
-        Text(task.title)
-            .strikethrough(completing, color: .secondary)
-            .foregroundStyle(shownDone ? .secondary : .primary)
+        titleText
         #endif
+    }
+
+    /// Title, then the step count in gray: "Кипр (3 / 12)".
+    private var titleText: some View {
+        var t = Text(task.title).foregroundColor(shownDone ? .secondary : .primary)
+        if let p = store.stepProgress(of: task.id) {
+            t = t + Text(" (\(p.done) / \(p.total))").foregroundColor(.secondary)
+        }
+        return t.strikethrough(completing, color: .secondary)
     }
 
     private func commitTitle() {
@@ -395,7 +395,7 @@ struct TaskInspector: ViewModifier {
                         .id(id)
                 }
             }
-            .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
+            .inspectorColumnWidth(min: 308, ideal: 352, max: 484)
             // Same light gray as the sidebar (the default inspector gray is a touch darker).
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(white: 0.965).ignoresSafeArea())
@@ -472,6 +472,7 @@ extension Store {
         withAnimation(.easeOut(duration: 0.15)) { liftingID = id }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.easeInOut(duration: 0.35)) { self.toggleImportant(id) }
+            self.scrollTarget = id
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 withAnimation(.easeIn(duration: 0.25)) { self.liftingID = nil }
             }
@@ -511,16 +512,15 @@ struct StarredStepLine: View {
                 .lineLimit(2)
         }
         .padding(.top, Self.gap)
+        .padding(.leading, 11)   // half a task circle to the right
     }
 
     // Mac: a point bigger and about 20% tighter than the iPhone sizes.
     #if os(macOS)
     static let font = Font.system(size: 12)
-    static let lineHeight: CGFloat = 15
-    static let gap: CGFloat = 0
-    static let countFont = Font.system(size: 11)
+    static let lineHeight: CGFloat = 16.5
+    static let gap: CGFloat = 0.5
     #else
-    static let countFont = Font.caption
     static let font = Font.subheadline
     static let lineHeight: CGFloat = 18
     static let gap: CGFloat = 1

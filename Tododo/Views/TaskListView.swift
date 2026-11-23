@@ -67,6 +67,11 @@ struct TaskListView: View {
         .listStyle(.plain)
         .environment(\.defaultMinListRowHeight, 34)
         #endif
+        .onChange(of: store.scrollTarget) { _, id in
+            guard let id else { return }
+            withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(id, anchor: .top) }
+            store.scrollTarget = nil
+        }
         .onChange(of: justAdded) { _, id in
             guard let id else { return }
             proxy.scrollTo(id, anchor: .top)
