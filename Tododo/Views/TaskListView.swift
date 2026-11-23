@@ -36,7 +36,7 @@ struct TaskListView: View {
                 Section {
                     if showDone {
                         ForEach(tasks.done) { item in
-                            TaskRow(task: item, scope: scope)
+                            TaskRow(task: item, scope: scope, onEditTitle: { selectedTask = item.id })
                                 .selectable(item.id, selection: $selectedTask)
                         }
                     }
@@ -67,11 +67,7 @@ struct TaskListView: View {
         #endif
         .onChange(of: justAdded) { _, id in
             guard let id else { return }
-            #if os(macOS)
-            withAnimation(.snappy) { proxy.scrollTo(id, anchor: .bottom) }
-            #else
             withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }
-            #endif
         }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -163,7 +159,7 @@ struct TaskListView: View {
                 Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
             }
         } else {
-            TaskRow(task: item, scope: scope)
+            TaskRow(task: item, scope: scope, onEditTitle: { selectedTask = item.id })
                 .selectable(item.id, selection: $selectedTask)
         }
     }

@@ -282,7 +282,7 @@ final class Store {
         return (top ?? 0) + 1
     }
 
-    /// Adds a task to the scope (top on iPhone, bottom on the Mac). A title starting with "#" becomes a section divider.
+    /// Adds a task to the top of the scope. A title starting with "#" becomes a section divider.
     @discardableResult
     func addTask(_ raw: String, in scope: Scope) -> String? {
         var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -301,20 +301,12 @@ final class Store {
         d.title = title
         d.listId = listID
         d.createdAt = now
-        // iPhone adds to the top; the Mac adds to the bottom, next to its add field.
-        #if os(iOS)
+        // New tasks go to the top (iPhone and Mac).
         d.position = topPosition(all.filter { self.listID(of: $0) == listID })
-        #else
-        d.position = nextPosition(all.filter { self.listID(of: $0) == listID })
-        #endif
         if isSection { d.isSection = true }
         if scope == .myDay {
             d.myDay = true
-            #if os(iOS)
             d.myDayPosition = topPosition(all.filter(\.isMyDay), myDay: true)
-            #else
-            d.myDayPosition = nextPosition(all.filter(\.isMyDay), myDay: true)
-            #endif
         }
         if scope == .important && !isSection { d.important = true }
         return create(.task, d)

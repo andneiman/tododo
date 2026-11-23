@@ -139,8 +139,12 @@ struct TaskRow: View {
     let task: Record
     /// The screen the row is on; `nil` in search results.
     let scope: Scope?
+    /// Mac: called when the title starts being edited in place, so the row gets selected too.
+    var onEditTitle: (() -> Void)? = nil
 
     @State private var hovering = false
+    @State private var titleDraft = ""
+    @FocusState private var titleFocused: Bool
     /// Checked but not yet moved away: the row shows the tick for a beat, then leaves smoothly.
     @State private var completing = false
 
@@ -151,9 +155,7 @@ struct TaskRow: View {
             CheckButton(done: shownDone) { complete() }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .strikethrough(completing, color: .secondary)
-                    .foregroundStyle(shownDone ? .secondary : .primary)
+                titleView
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
@@ -207,6 +209,40 @@ struct TaskRow: View {
         #if os(macOS)
         .contextMenu { TaskMenu(task: task) }   // iPhone: long press only drags
         #endif
+    }
+
+    /// iPhone: plain text (tap opens the task). Mac: edit the title right in the row.
+    @ViewBuilder private var titleView: some View {
+        #if os(macOS)
+        TextField("Task", text: $titleDraft, axis: .vertical)
+            .textFieldStyle(.plain)
+            .labelsHidden()
+            .lineLimit(1...)
+            .focused($titleFocused)
+            .strikethrough(completing, color: .secondary)
+            .foregroundStyle(shownDone ? .secondary : .primary)
+            .onAppear { titleDraft = task.title }
+            .onChange(of: task.title) { _, new in if !titleFocused { titleDraft = new } }
+            .onChange(of: titleFocused) { _, focused in
+                if focused { onEditTitle?() } else { commitTitle() }
+            }
+            .onChange(of: titleDraft) { _, new in
+                if new.contains("\n") {
+                    titleDraft = new.replacingOccurrences(of: "\n", with: "")
+                    titleFocused = false
+                }
+            }
+        #else
+        Text(task.title)
+            .strikethrough(completing, color: .secondary)
+            .foregroundStyle(shownDone ? .secondary : .primary)
+        #endif
+    }
+
+    private func commitTitle() {
+        let t = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty || t == task.title { titleDraft = task.title; return }
+        store.rename(task.id, to: t)
     }
 
     /// Completing: tick + strike-through first, then the row glides out of the list.
