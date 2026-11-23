@@ -19,16 +19,9 @@ struct TaskDetailView: View {
         }
         .presentationDetents([.medium, .large])
         #else
+        // No toolbar button: Esc, or a click on empty space, closes the details.
         content
             .onExitCommand(perform: onClose)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: onClose) {
-                        Label("Hide Details", systemImage: "sidebar.trailing")
-                    }
-                    .help("Hide Details (Esc)")
-                }
-            }
         #endif
     }
 
@@ -89,6 +82,10 @@ private struct TaskForm: View {
             }
 
             Section {
+                NoteField(task: task)
+            }
+
+            Section {
                 Toggle(isOn: Binding(get: { task.isMyDay }, set: { _ in withAnimation(.taskLeave) { store.toggleMyDay(task.id) } })) {
                     Label("My Day", systemImage: "sun.max")
                 }
@@ -102,6 +99,9 @@ private struct TaskForm: View {
                     }
                 } label: {
                     Label("List", systemImage: "list.bullet")
+                }
+                CopyAgentLinkButton(taskID: task.id) { copied in
+                    Label(copied ? "Link Copied" : "Copy Link for AI Agent", systemImage: copied ? "checkmark" : "link")
                 }
             }
 
@@ -179,6 +179,8 @@ private struct StepRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             CheckButton(done: step.isDone, size: 16) { store.toggleStep(step.id) }
+                // The circle's middle lines up with the middle of the first text line.
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
             // Long steps wrap onto new lines instead of being cut off; Return still just ends editing.
             if step.isDone {
                 // Completed steps read gray (text fields ignore the color on the Mac).
@@ -192,27 +194,33 @@ private struct StepRow: View {
                     .lineLimit(1...)
                     .focused($editing)
             }
-            if hovering {
-                Button { store.deleteStep(step.id) } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.borderless)
-                .help("Delete Step")
+            #if os(macOS)
+            // Always laid out, only shown on hover, so the row never changes size.
+            Button { store.deleteStep(step.id) } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.tertiary)
             }
-            if showsStar {
-                Button {
-                    withAnimation(.snappy) { store.toggleStepStar(step.id) }
-                } label: {
-                    Image(systemName: step.isImportant ? "eye.fill" : "eye")
-                        .font(.system(size: 14))
-                        .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
+            .buttonStyle(.borderless)
+            .help("Delete Step")
+            .opacity(hovering ? 1 : 0)
+            .allowsHitTesting(hovering)
+            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
+            #endif
+            Button {
+                withAnimation(.snappy) { store.toggleStepStar(step.id) }
+            } label: {
+                Image(systemName: step.isImportant ? "eye.fill" : "eye")
+                    .font(.system(size: 13))
+                    .foregroundStyle(step.isImportant ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
+                    .frame(width: 26, height: 20)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .help(step.isImportant ? "Hide from the list" : "Show under the task in the list")
+            // Always laid out (hidden when not needed), so hovering never shifts the row.
+            .opacity(showsStar ? 1 : 0)
+            .allowsHitTesting(showsStar)
+            .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
         }
         .onHover { hovering = $0 }
         .onAppear { text = step.title }
@@ -298,6 +306,8 @@ private struct MacTaskPane: View {
                     Divider()
                         .padding(.vertical, 12)
 
+                    NoteField(task: task)
+                        .padding(.bottom, 12)
                     PaneRow(
                         icon: task.isMyDay ? "sun.max.fill" : "sun.max",
                         title: task.isMyDay ? "Added to My Day" : "Add to My Day",
@@ -324,6 +334,11 @@ private struct MacTaskPane: View {
                     .menuStyle(.button)
                     .buttonStyle(.plain)
                     .menuIndicator(.hidden)
+                    CopyAgentLinkButton(taskID: task.id) { copied in
+                        PaneLabel(icon: copied ? "checkmark" : "link", title: copied ? "Link Copied" : "Copy Link for AI Agent",
+                                  tint: copied ? .green : nil, trailing: nil)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
@@ -441,3 +456,49 @@ private struct PaneLabel: View {
     }
 }
 #endif
+
+
+// MARK: - Note and AI link
+
+/// Free-form note of a task. Saved as you type.
+private struct NoteField: View {
+    @Environment(Store.self) private var store
+    let task: Record
+    @State private var text = ""
+
+    var body: some View {
+        TextField("Note", text: $text, prompt: Text("Add Note"), axis: .vertical)
+            .labelsHidden()
+            .textFieldStyle(.plain)
+            .lineLimit(2...)
+            .onAppear { text = task.data.note ?? "" }
+            .onChange(of: task.id) { _, _ in text = task.data.note ?? "" }
+            .onChange(of: text) { _, new in store.setNote(task.id, to: new) }
+    }
+}
+
+/// Copies a link an AI agent (ChatGPT, Claude…) can open to read everything about the task: title, list, steps, note.
+private struct CopyAgentLinkButton<Label: View>: View {
+    let taskID: String
+    @ViewBuilder let label: (_ copied: Bool) -> Label
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            guard let config = Config.current else { return }
+            let link = config.agentLink(forTask: taskID).absoluteString
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(link, forType: .string)
+            #else
+            UIPasteboard.general.string = link
+            #endif
+            withAnimation(.snappy) { copied = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { withAnimation(.snappy) { copied = false } }
+        } label: {
+            label(copied)
+        }
+        .disabled(Config.current == nil)
+        .help("Copies a link that ChatGPT or Claude can open to read this task")
+    }
+}

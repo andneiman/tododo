@@ -434,6 +434,12 @@ final class Store {
         steps(of: taskID).filter { $0.isImportant && !$0.isDone }
     }
 
+    func setNote(_ id: String, to note: String) {
+        let v = note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : note
+        guard record(id)?.data.note != v else { return }
+        update(id) { $0.note = v }
+    }
+
     func toggleStep(_ id: String) {
         let stamp = now
         update(id) {

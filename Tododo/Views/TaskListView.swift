@@ -87,17 +87,16 @@ struct TaskListView: View {
         .softScrollEdges()
         .navigationTitle(store.title(of: scope))
         .hidesToolbarTitle()
-        .toolbar {
-            #if os(macOS)
-            ToolbarItem {
-                Button { adding = true } label: {
-                    Label("New Task", systemImage: "plus")
-                }
+        #if os(macOS)
+        // No toolbar "+" (the add field is right there); ⌘N still jumps to it.
+        .background {
+            Button("New Task") { adding = true }
                 .keyboardShortcut("n", modifiers: .command)
-                .help("New Task (⌘N)")
-            }
-            #endif
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         }
+        #endif
         .sensoryFeedback(.success, trigger: store.doneTick)
         .onChange(of: sectionFocused) { _, focused in
             if !focused { commitSection() }

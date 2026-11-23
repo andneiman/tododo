@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Where to sync. Set once with a connection link (`tododo://setup?url=…&token=…`),
 /// or shipped in a local, git-ignored Secrets.plist.
@@ -49,5 +50,14 @@ struct Config: Equatable {
               let t = token?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty
         else { return nil }
         return Config(url: u, token: t)
+    }
+
+    /// A read-only link to one task that an AI agent (ChatGPT, Claude…) can open to see everything about it.
+    func agentLink(forTask id: String) -> URL {
+        let mac = HMAC<SHA256>.authenticationCode(for: Data(id.utf8), using: SymmetricKey(data: Data(token.utf8)))
+        let key = mac.map { String(format: "%02x", $0) }.joined().prefix(24)
+        var c = URLComponents(url: url.appendingPathComponent("api/share").appendingPathComponent(id), resolvingAgainstBaseURL: false)!
+        c.queryItems = [URLQueryItem(name: "k", value: String(key))]
+        return c.url!
     }
 }

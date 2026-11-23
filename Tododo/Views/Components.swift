@@ -168,6 +168,12 @@ struct TaskRow: View {
                         StarredStepLine(step: step)
                     }
                 }
+                // Step count sits under the steps shown in the list.
+                if let p = store.stepProgress(of: task.id) {
+                    Text("\(p.done) of \(p.total)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer(minLength: 8)
@@ -285,7 +291,6 @@ struct TaskRow: View {
         }
         if showsList { parts.append(store.listName(task.data.listId)) }
         if task.isMyDay && scope != .myDay { parts.append("My Day") }
-        if let p = store.stepProgress(of: task.id) { parts.append("\(p.done) of \(p.total)") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }

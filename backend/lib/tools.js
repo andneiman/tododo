@@ -60,6 +60,7 @@ function view(state, t) {
     important: !!t.data.important,
     my_day: !!t.data.myDay,
     ...times(t),
+    ...(t.data.note ? { note: t.data.note } : {}),
     ...(steps.length ? { steps } : {}),
   };
 }
@@ -164,6 +165,7 @@ export const tools = [
               my_day: { type: 'boolean' },
               important: { type: 'boolean' },
               steps: { type: 'array', items: { type: 'string' } },
+              note: { type: 'string', description: 'Free-form note' },
             },
             required: ['title'],
           },
@@ -188,6 +190,7 @@ export const tools = [
           listId, title, position: secInList ? slot(inList, 'position', t.section) : top(inList, 'position'), createdAt: now,
           ...(isSection ? { isSection: true } : {}),
           ...(t.important && !isSection ? { important: true } : {}),
+          ...(t.note && !isSection ? { note: String(t.note) } : {}),
           ...(t.my_day ? { myDay: true, myDayPosition: secInDay ? slot(myDay, 'myDayPosition', t.section) : top(myDay, 'myDayPosition') } : {}),
         };
         const rec = setRecord(state, randomUUID(), 'task', data);
@@ -199,7 +202,7 @@ export const tools = [
   },
   {
     name: 'update_task',
-    description: 'Change a task: rename, complete/reopen, toggle important or My Day, move to another list, move under a section, or set a section divider\'s color. Only provided fields change.',
+    description: 'Change a task: rename, set its note, complete/reopen, toggle important or My Day, move to another list, move under a section, or set a section divider\'s color. Only provided fields change.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -210,6 +213,7 @@ export const tools = [
         my_day: { type: 'boolean' },
         list: { type: 'string', description: 'Move to this list (name or id)' },
         color: { type: 'string', enum: COLORS, description: 'Text color of a section divider (black is the default)' },
+        note: { type: 'string', description: 'Free-form note of the task ("" clears it)' },
         section: { type: 'string', description: 'Move to the end of this section (in the task list, and in My Day if the section is there)' },
       },
       required: ['id'],
@@ -229,6 +233,7 @@ export const tools = [
           if (t.data.myDay || a.my_day) patch.myDayPosition = top(others.filter((x) => x.data.myDay), 'myDayPosition');
         }
       }
+      if (a.note !== undefined) patch.note = String(a.note).trim() ? String(a.note) : null;
       if (a.color !== undefined) {
         if (!COLORS.includes(a.color)) fail(`color must be one of: ${COLORS.join(', ')}`);
         patch.color = a.color === 'black' ? null : a.color;
