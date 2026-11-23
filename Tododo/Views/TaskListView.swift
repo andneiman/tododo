@@ -69,7 +69,7 @@ struct TaskListView: View {
         #endif
         .onChange(of: justAdded) { _, id in
             guard let id else { return }
-            withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }
+            proxy.scrollTo(id, anchor: .top)
         }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -242,8 +242,13 @@ struct TaskListView: View {
         let text = draft
         draft = ""
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        let id = withAnimation(.snappy) { store.addTask(text, in: scope) }
+        // Appears in place at the top, no sliding around.
+        let id = store.addTask(text, in: scope)
         justAdded = id
+        #if os(macOS)
+        // Details were open on another task: show the new one instead.
+        if selectedTask != nil, let id, store.record(id)?.isSection != true { selectedTask = id }
+        #endif
         // Keep the field active for the next task.
         DispatchQueue.main.async { adding = true }
     }

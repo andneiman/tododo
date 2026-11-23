@@ -171,7 +171,7 @@ struct TaskRow: View {
                 // Step count sits under the steps shown in the list.
                 if let p = store.stepProgress(of: task.id) {
                     Text("\(p.done) of \(p.total)")
-                        .font(.caption)
+                        .font(StarredStepLine.countFont)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -499,17 +499,30 @@ struct StarredStepLine: View {
                     .font(.system(size: 13, weight: .light))
                     .foregroundStyle(ticking ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                     .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 18, height: 18)
+                    .frame(width: 18, height: Self.lineHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Complete step")
             Text(step.title)
-                .font(.subheadline)
+                .font(Self.font)
                 .strikethrough(ticking, color: .secondary)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         }
-        .padding(.top, 1)
+        .padding(.top, Self.gap)
     }
+
+    // Mac: a point bigger and about 20% tighter than the iPhone sizes.
+    #if os(macOS)
+    static let font = Font.system(size: 12)
+    static let lineHeight: CGFloat = 15
+    static let gap: CGFloat = 0
+    static let countFont = Font.system(size: 11)
+    #else
+    static let countFont = Font.caption
+    static let font = Font.subheadline
+    static let lineHeight: CGFloat = 18
+    static let gap: CGFloat = 1
+    #endif
 }
