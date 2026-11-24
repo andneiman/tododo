@@ -393,6 +393,27 @@ final class Store {
     }
 
     /// Drag-to-reorder among open items. Only the moved item gets a new position (between its neighbours).
+    /// Drag a step up or down within its task.
+    func reorderSteps(of taskID: String, from source: IndexSet, to destination: Int) {
+        var items = steps(of: taskID)
+        items.move(fromOffsets: source, toOffset: destination)
+        for (i, step) in items.enumerated() where step.data.position != Double(i + 1) {
+            update(step.id) { $0.position = Double(i + 1) }
+        }
+    }
+
+    /// Mac drag and drop: put a step right before another one (or at the end).
+    func moveStep(_ id: String, before targetID: String?) {
+        var items = steps(of: record(id)?.data.taskId ?? "")
+        guard let from = items.firstIndex(where: { $0.id == id }) else { return }
+        let moved = items.remove(at: from)
+        let to = targetID.flatMap { t in items.firstIndex { $0.id == t } } ?? items.count
+        items.insert(moved, at: to)
+        for (i, step) in items.enumerated() where step.data.position != Double(i + 1) {
+            update(step.id) { $0.position = Double(i + 1) }
+        }
+    }
+
     func reorder(in scope: Scope, from source: IndexSet, to destination: Int) {
         guard scope != .important else { return }
         let myDay = scope == .myDay

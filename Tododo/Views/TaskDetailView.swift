@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TaskDetailView: View {
     @Environment(Store.self) private var store
@@ -67,6 +68,8 @@ private struct TaskForm: View {
                 ForEach(store.steps(of: task.id)) { step in
                     StepRow(step: step)
                 }
+                // Press and hold a step, then drag it up or down.
+                .onMove { store.reorderSteps(of: task.id, from: $0, to: $1) }
 
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
@@ -327,6 +330,15 @@ private struct MacTaskPane: View {
                     ForEach(store.steps(of: task.id)) { step in
                         StepRow(step: step)
                             .padding(.vertical, 3)
+                            // Drag a step onto another to put it there.
+                            .draggable(StepDrag(id: step.id)) {
+                                Text(step.title).padding(6).background(.background, in: RoundedRectangle(cornerRadius: 6))
+                            }
+                            .dropDestination(for: StepDrag.self) { items, _ in
+                                guard let item = items.first, item.id != step.id else { return false }
+                                withAnimation(.snappy) { store.moveStep(item.id, before: step.id) }
+                                return true
+                            }
                     }
 
                     HStack(spacing: 8) {
@@ -549,5 +561,13 @@ private struct CopyAgentLinkButton<Label: View>: View {
         }
         .disabled(Config.current == nil)
         .help("Copies a link that ChatGPT or Claude can open to read this task")
+    }
+}
+
+/// What a dragged step carries (its id), for reordering steps on the Mac.
+struct StepDrag: Codable, Transferable {
+    let id: String
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .data)
     }
 }
