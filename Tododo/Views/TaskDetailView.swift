@@ -146,7 +146,7 @@ private struct TaskForm: View {
     private var createdText: String {
         guard let created = task.data.createdAt else { return "" }
         let date = Date(timeIntervalSince1970: created / 1000)
-        return "Created \(date.formatted(date: .abbreviated, time: .omitted))"
+        return "Created \(date.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private var listBinding: Binding<String> {
@@ -452,7 +452,7 @@ private struct MacTaskPane: View {
     private var createdText: String {
         guard let created = task.data.createdAt else { return "" }
         let date = Date(timeIntervalSince1970: created / 1000)
-        return "Created \(date.formatted(date: .abbreviated, time: .omitted))"
+        return "Created \(date.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private func addStep() {
