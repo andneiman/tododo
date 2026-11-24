@@ -86,10 +86,17 @@ struct TaskListView: View {
         .scrollDismissesKeyboard(.interactively)
         .overlay {
             if tasks.open.isEmpty && tasks.done.isEmpty {
-                // Quiet gray line, not a big empty-state picture.
-                Text(emptyTitle)
-                    .foregroundStyle(.secondary)
-                    .allowsHitTesting(false)
+                // No picture: the title, then the hint with each sentence on its own line.
+                VStack(spacing: 6) {
+                    Text(emptyTitle)
+                        .font(.headline)
+                    Text(emptyText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .allowsHitTesting(false)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { addBar }
@@ -241,7 +248,7 @@ struct TaskListView: View {
         switch scope {
         case .myDay: return "Tasks you add to My Day stay here until they’re done."
         case .important: return "Star a task to see it here."
-        default: return "Add a task below. Start with # to add a section."
+        default: return "Add a task below.\nStart with # to add a section."
         }
     }
 
