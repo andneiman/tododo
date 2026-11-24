@@ -169,14 +169,9 @@ struct TaskRow: View {
 
             Spacer(minLength: 2)   // text runs right up to the icons
 
-            // Sun (in My Day, outline orange — instead of a "My Day" caption; not shown inside My Day itself)
-            // and star sit a ray's width apart.
+            // Star, then the sun (in My Day, outline orange — instead of a "My Day" caption; not shown
+            // inside My Day itself), a ray's width apart.
             HStack(spacing: 3) {
-                if task.isMyDay && scope != .myDay && !task.isDone {
-                    Image(systemName: "sun.max")
-                        .foregroundStyle(Color.orange)
-                        .accessibilityLabel("In My Day")
-                }
                 if task.isImportant || hovering {
                     Button {
                         store.star(task.id)
@@ -186,6 +181,11 @@ struct TaskRow: View {
                     }
                     .buttonStyle(.borderless)
                     .help(task.isImportant ? "Remove from Important" : "Mark as Important")
+                }
+                if task.isMyDay && scope != .myDay && !task.isDone {
+                    Image(systemName: "sun.max")
+                        .foregroundStyle(Color.orange)
+                        .accessibilityLabel("In My Day")
                 }
             }
         }
