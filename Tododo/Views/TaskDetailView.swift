@@ -81,7 +81,7 @@ private struct TaskForm: View {
                         .focused($stepFocused)
                         .submitLabel(.done)
                         .onSubmit(addStep)
-                        .textInputAutocapitalization(.never)   // steps start small unless you press Shift
+                        .noAutoCapitals()   // steps start small unless you press Shift
                 }
             }
 
@@ -208,7 +208,7 @@ private struct StepRow: View {
                     .textFieldStyle(.plain)
                     .lineLimit(1...)
                     .focused($editing)
-                    .textInputAutocapitalization(.never)
+                    .noAutoCapitals()
             } else if macEditing {
                 #if os(macOS)
                 // Mac: a bare field (no stray empty line, no white box) while renaming.
@@ -569,5 +569,16 @@ struct StepDrag: Codable, Transferable {
     let id: String
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .data)
+    }
+}
+
+extension View {
+    /// iPhone keyboard: don't capitalize the first letter on its own (Shift still works). No-op on the Mac.
+    func noAutoCapitals() -> some View {
+        #if os(iOS)
+        textInputAutocapitalization(.never)
+        #else
+        self
+        #endif
     }
 }
