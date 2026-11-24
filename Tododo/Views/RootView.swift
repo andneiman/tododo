@@ -11,6 +11,10 @@ struct RootView: View {
         NavigationSplitView {
             SidebarView(selection: $selection, query: query)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 340)
+                #if os(macOS)
+                // The only toolbar button; the sidebar still toggles from View ▸ Hide Sidebar (⌃⌘S).
+                .toolbar(removing: .sidebarToggle)
+                #endif
         } detail: {
             detail
         }

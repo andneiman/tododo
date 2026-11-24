@@ -43,6 +43,10 @@ struct TododoApp: App {
             }
         }
         .defaultSize(width: 1060, height: 700)
+        #if os(macOS)
+        // No title bar strip: the window has nothing to show there (window buttons stay).
+        .windowStyle(.hiddenTitleBar)
+        #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 store.becameActive()
