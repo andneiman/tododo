@@ -167,23 +167,26 @@ struct TaskRow: View {
 
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 2)   // text runs right up to the icons
 
-            // In My Day (outline sun, orange) — instead of a "My Day" caption. Not shown inside My Day itself.
-            if task.isMyDay && scope != .myDay && !task.isDone {
-                Image(systemName: "sun.max")
-                    .foregroundStyle(Color.orange)
-                    .accessibilityLabel("In My Day")
-            }
-            if task.isImportant || hovering {
-                Button {
-                    store.star(task.id)
-                } label: {
-                    Image(systemName: task.isImportant ? "star.fill" : "star")
-                        .foregroundStyle(task.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
+            // Sun (in My Day, outline orange — instead of a "My Day" caption; not shown inside My Day itself)
+            // and star sit a ray's width apart.
+            HStack(spacing: 3) {
+                if task.isMyDay && scope != .myDay && !task.isDone {
+                    Image(systemName: "sun.max")
+                        .foregroundStyle(Color.orange)
+                        .accessibilityLabel("In My Day")
                 }
-                .buttonStyle(.borderless)
-                .help(task.isImportant ? "Remove from Important" : "Mark as Important")
+                if task.isImportant || hovering {
+                    Button {
+                        store.star(task.id)
+                    } label: {
+                        Image(systemName: task.isImportant ? "star.fill" : "star")
+                            .foregroundStyle(task.isImportant ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tertiary))
+                    }
+                    .buttonStyle(.borderless)
+                    .help(task.isImportant ? "Remove from Important" : "Mark as Important")
+                }
             }
         }
         .padding(.vertical, rowPadding)
@@ -518,7 +521,7 @@ struct StarredStepLine: View {
                 .font(Self.font)
                 .strikethrough(ticking, color: .secondary)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)   // whole text, wrapping onto as many lines as needed
         }
         .padding(.top, Self.gap)
         .padding(.leading, 5)   // a touch to the right of the task text

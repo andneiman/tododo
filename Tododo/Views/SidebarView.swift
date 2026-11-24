@@ -148,12 +148,24 @@ struct SidebarView: View {
         .padding(.top, 10)
         .contentShape(Rectangle())
         .onTapGesture {
+            guard editingID != group.id else { return }   // typing the new name, not folding
             withAnimation(.snappy) {
                 if collapsed.contains(group.id) { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
             }
         }
         .listRowSeparator(.hidden)
         .selectionDisabled()
+        // Long press (right-click on the Mac) anywhere on the group's title row.
+        .contextMenu {
+            Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
+            Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
+            Divider()
+            Button("Ungroup", systemImage: "folder.badge.minus") { store.deleteGroup(group.id) }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button("Rename", systemImage: "pencil") { startEditing(group.id, text: group.title) }
+                .tint(.gray)
+        }
     }
 
     #if os(iOS)
@@ -199,14 +211,14 @@ struct SidebarView: View {
         .contextMenu {
             Button("Rename", systemImage: "pencil") { startEditing(list.id, text: list.title) }
             Menu("Move to Group", systemImage: "folder") {
-                Button("None") { store.setGroup(ofList: list.id, to: nil) }
+                Button("Lists") { store.setGroup(ofList: list.id, to: nil) }
                 if !store.groups.isEmpty { Divider() }
                 ForEach(store.groups) { g in
                     Button(g.title) { store.setGroup(ofList: list.id, to: g.id) }
                 }
             }
             Divider()
-            Button("Delete List…", systemImage: "trash", role: .destructive) { listToDelete = list }
+            Button("Delete List", systemImage: "trash", role: .destructive) { listToDelete = list }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Delete", systemImage: "trash", role: .destructive) { listToDelete = list }
@@ -225,12 +237,7 @@ struct SidebarView: View {
                 Text(group.title)
             }
         }
-        .contextMenu {
-            Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
-            Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
-            Divider()
-            Button("Ungroup", systemImage: "folder.badge.minus") { store.deleteGroup(group.id) }
-        }
+
     }
 
     #if os(macOS)
