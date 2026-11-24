@@ -508,6 +508,14 @@ final class Store {
         remove(id)
     }
 
+    /// Put a list into a group (or none) at a given place in the sidebar order.
+    func placeList(_ id: String, inGroup groupID: String?, at position: Double) {
+        update(id) {
+            $0.groupId = groupID
+            $0.position = position
+        }
+    }
+
     func setGroup(ofList id: String, to groupID: String?) {
         update(id) { $0.groupId = groupID }
     }

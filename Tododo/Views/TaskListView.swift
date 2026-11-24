@@ -86,12 +86,10 @@ struct TaskListView: View {
         .scrollDismissesKeyboard(.interactively)
         .overlay {
             if tasks.open.isEmpty && tasks.done.isEmpty {
-                ContentUnavailableView {
-                    Label(emptyTitle, systemImage: scope == .myDay ? "sun.max" : "checklist")
-                } description: {
-                    Text(emptyText)
-                }
-                .allowsHitTesting(false)
+                // Quiet gray line, not a big empty-state picture.
+                Text(emptyTitle)
+                    .foregroundStyle(.secondary)
+                    .allowsHitTesting(false)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { addBar }

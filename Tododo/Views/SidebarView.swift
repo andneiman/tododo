@@ -32,12 +32,14 @@ struct SidebarView: View {
         .onChange(of: editFocused) { _, focused in
             if !focused { commitEdit() }
         }
-        .confirmationDialog(
+        // A centered alert (an anchored dialog popped up in the wrong place on iPhone).
+        .alert(
             "Delete “\(listToDelete?.title ?? "")”?",
             isPresented: Binding(get: { listToDelete != nil }, set: { if !$0 { listToDelete = nil } }),
             presenting: listToDelete
         ) { list in
             Button("Delete List", role: .destructive) { delete(list) }
+            Button("Cancel", role: .cancel) {}
         } message: { list in
             let n = store.taskCount(inList: list.id)
             Text(n == 0 ? "This list is empty." : "\(n == 1 ? "Its task" : "All \(n) of its tasks") will be deleted too. You can restore them from Claude.")
@@ -78,18 +80,80 @@ struct SidebarView: View {
         }
 
         // "Tasks" is just the first list: always there, can't be deleted.
+        // Lists and group titles are one list, so a list can be dragged anywhere —
+        // up or down, or under another group's title to move it into that group.
         Section("Lists") {
             smartRow(.inbox, Store.inboxName, "list.bullet")
-            ForEach(store.lists(inGroup: nil)) { listRow($0) }
+            ForEach(rows) { row in
+                switch row {
+                case .list(let list): listRow(list)
+                case .group(let group): groupTitleRow(group).moveDisabled(true)
+                }
+            }
+            .onMove(perform: moveRows)
         }
+    }
 
-        ForEach(store.groups) { group in
-            Section(isExpanded: expanded(group.id)) {
-                ForEach(store.lists(inGroup: group.id)) { listRow($0) }
-            } header: {
-                groupHeader(group)
+    private enum Row: Identifiable {
+        case list(Record), group(Record)
+        var id: String { switch self { case .list(let r), .group(let r): r.id } }
+    }
+
+    /// Ungrouped lists first, then each group's title followed by its lists (hidden while collapsed).
+    private var rows: [Row] {
+        var out = store.lists(inGroup: nil).map(Row.list)
+        for g in store.groups {
+            out.append(.group(g))
+            if !collapsed.contains(g.id) { out += store.lists(inGroup: g.id).map(Row.list) }
+        }
+        return out
+    }
+
+    private func moveRows(from source: IndexSet, to destination: Int) {
+        var items = rows
+        items.move(fromOffsets: source, toOffset: destination)
+        // Each list belongs to the group whose title is above it; positions follow the new order.
+        var group: String?
+        var position = 0.0
+        for row in items {
+            switch row {
+            case .group(let g): group = g.id
+            case .list(let l):
+                position += 1
+                if l.data.groupId != group || l.data.position != position {
+                    store.placeList(l.id, inGroup: group, at: position)
+                }
             }
         }
+        // Lists hidden inside collapsed groups keep their order after the visible ones.
+        for g in store.groups where collapsed.contains(g.id) {
+            for l in store.lists(inGroup: g.id) where !items.contains(where: { $0.id == l.id }) {
+                position += 1
+                store.placeList(l.id, inGroup: g.id, at: position)
+            }
+        }
+    }
+
+    /// A group's title inside the Lists section: tap to fold or unfold, long press for its menu.
+    private func groupTitleRow(_ group: Record) -> some View {
+        HStack {
+            groupHeader(group)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Image(systemName: collapsed.contains(group.id) ? "chevron.right" : "chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.top, 10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.snappy) {
+                if collapsed.contains(group.id) { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
+            }
+        }
+        .listRowSeparator(.hidden)
+        .selectionDisabled()
     }
 
     #if os(iOS)
@@ -205,8 +269,7 @@ struct SidebarView: View {
     private func newList(in groupID: String?) {
         guard let id = store.addList(name: "Untitled List", groupID: groupID) else { return }
         if let groupID { collapsed.remove(groupID) }
-        selection = .list(id)
-        startEditing(id, text: "")
+        startEditing(id, text: "")   // named in place; stays where you are
     }
 
     private func newGroup() {
@@ -229,6 +292,9 @@ struct SidebarView: View {
 
     private func delete(_ list: Record) {
         if selection == .list(list.id) { selection = .inbox }
-        store.deleteList(list.id)
+        // No animation: animating it made the group title below slide over the lists.
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) { store.deleteList(list.id) }
     }
 }
