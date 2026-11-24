@@ -390,15 +390,15 @@ private struct MacTaskPane: View {
             .overlay(alignment: .topTrailing) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 36, height: 36)   // big, forgiving click area
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Close (Esc)")
-                .padding(.top, 8)
-                .padding(.trailing, 10)
+                .padding(.top, 2)
+                .padding(.trailing, 4)
             }
 
             Divider()
