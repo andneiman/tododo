@@ -402,12 +402,14 @@ final class Store {
         }
     }
 
-    /// Mac drag and drop: put a step right before another one (or at the end).
+    /// Mac drag and drop: drop a step onto another one and it takes that place
+    /// (dragged down: lands below it; dragged up: lands above it).
     func moveStep(_ id: String, before targetID: String?) {
         var items = steps(of: record(id)?.data.taskId ?? "")
         guard let from = items.firstIndex(where: { $0.id == id }) else { return }
+        let target = targetID.flatMap { t in items.firstIndex { $0.id == t } } ?? items.count
         let moved = items.remove(at: from)
-        let to = targetID.flatMap { t in items.firstIndex { $0.id == t } } ?? items.count
+        let to = min(target, items.count)   // after removal, the target's old slot is exactly right both ways
         items.insert(moved, at: to)
         for (i, step) in items.enumerated() where step.data.position != Double(i + 1) {
             update(step.id) { $0.position = Double(i + 1) }
