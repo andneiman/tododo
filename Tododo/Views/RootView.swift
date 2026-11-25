@@ -68,11 +68,8 @@ struct RootView: View {
         case "home", "search": return nil
         default: break
         }
-        #if os(macOS)
+        // The app always opens on My Day (iPhone: Back leads to the lists).
         return .myDay
-        #else
-        return nil
-        #endif
     }
 }
 
