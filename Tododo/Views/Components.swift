@@ -220,7 +220,7 @@ struct TaskRow: View {
         // iPhone: a normal long press drags; holding a bit longer without moving opens quick actions
         // (any movement of the finger — i.e. dragging — cancels the menu).
         .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.9, maximumDistance: 4).onEnded { _ in
+            LongPressGesture(minimumDuration: 2, maximumDistance: 4).onEnded { _ in
                 guard !task.isSection else { return }
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showActions = true
