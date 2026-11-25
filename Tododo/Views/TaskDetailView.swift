@@ -75,13 +75,25 @@ private struct TaskForm: View {
                     Image(systemName: "plus")
                         .foregroundStyle(.secondary)
                         .frame(width: 22)
-                    TextField("Add Step", text: $newStep, prompt: Text("Add Step"))
+                    // Return adds the step and the keyboard stays up (no close-and-reopen jump of the sheet).
+                    // Return on an empty field closes the keyboard.
+                    TextField("Add Step", text: $newStep, prompt: Text("Add Step"), axis: .vertical)
                         .labelsHidden()
                         .textFieldStyle(.plain)
+                        .lineLimit(1...4)
                         .focused($stepFocused)
-                        .submitLabel(.done)
-                        .onSubmit(addStep)
+                        .submitLabel(.return)
                         .noAutoCapitals()   // steps start small unless you press Shift
+                        .onChange(of: newStep) { _, new in
+                            guard new.contains("\n") else { return }
+                            newStep = new.replacingOccurrences(of: "\n", with: "")
+                            if newStep.trimmingCharacters(in: .whitespaces).isEmpty {
+                                stepFocused = false
+                            } else {
+                                store.addStep(to: task.id, title: newStep)
+                                newStep = ""
+                            }
+                        }
                 }
             }
 
