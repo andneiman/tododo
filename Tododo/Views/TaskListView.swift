@@ -190,12 +190,28 @@ struct TaskListView: View {
                 .font(.body.weight(.medium))
                 .foregroundStyle(isSection ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .frame(width: 18)
+            #if os(iOS)
+            // Return adds the task and the keyboard stays put (a plain field would drop focus on
+            // Return and pop the keyboard down and up again). Return on an empty field closes it.
+            TextField("Add a Task", text: $draft, prompt: Text(isSection ? "Section Name" : "Add a Task"), axis: .vertical)
+                .labelsHidden()
+                .textFieldStyle(.plain)
+                .lineLimit(1...4)
+                .focused($adding)
+                .submitLabel(.return)
+                .onChange(of: draft) { _, new in
+                    guard new.contains("\n") else { return }
+                    draft = new.replacingOccurrences(of: "\n", with: "")
+                    if draft.trimmingCharacters(in: .whitespaces).isEmpty { adding = false } else { submit() }
+                }
+            #else
             TextField("Add a Task", text: $draft, prompt: Text(isSection ? "Section Name" : "Add a Task"))
                 .labelsHidden()
                 .textFieldStyle(.plain)
                 .focused($adding)
                 .submitLabel(.done)
                 .onSubmit(submit)
+            #endif
             if isSection {
                 Text("Section")
                     .font(.caption.weight(.medium))
@@ -265,8 +281,10 @@ struct TaskListView: View {
         // Details were open on another task: show the new one instead.
         if selectedTask != nil, let id, store.record(id)?.isSection != true { selectedTask = id }
         #endif
-        // Keep the field active for the next task.
+        // Keep the field active for the next task (the iPhone field never lets go of it).
+        #if os(macOS)
         DispatchQueue.main.async { adding = true }
+        #endif
     }
 
     private func startRenaming(_ item: Record) {
