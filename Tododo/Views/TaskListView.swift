@@ -336,7 +336,7 @@ private struct SectionEditor: View {
                                 store.setColor(id, to: c == .black ? nil : c.rawValue)
                             } label: {
                                 Circle()
-                                    .fill(c.color)
+                                    .fill(c == .black ? Color.black : c.color)   // true black swatch (the text color softens it in the sheet)
                                     .frame(width: 32, height: 32)
                                     .overlay {
                                         if c == color {
