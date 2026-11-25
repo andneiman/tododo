@@ -261,11 +261,11 @@ struct TaskRow: View {
         #endif
     }
 
-    /// Title, then the step count in gray: "Кипр (3 / 12)".
+    /// Title, then the step count in light gray: "Кипр  3/12".
     private var titleText: some View {
         var t = Text(task.title).foregroundColor(shownDone ? .secondary : Color.label)
         if let p = store.stepProgress(of: task.id) {
-            t = t + Text(" (\(p.done)/\(p.total))").foregroundColor(Color.secondary.opacity(0.5))
+            t = t + Text("  \(p.done)/\(p.total)").foregroundColor(Color.secondary.opacity(0.5))
         }
         return t.strikethrough(completing, color: .secondary)
     }
