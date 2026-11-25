@@ -49,7 +49,7 @@ jobs:
             xcrun simctl boot "$2" || true
             xcrun simctl bootstatus "$2" -b
             xcrun simctl install "$2" build/Debug-iphonesimulator/Tododo.app
-            for screen in home myday list detail settings search empty lock; do
+            for screen in home myday list detail section settings search empty lock; do
               xcrun simctl terminate "$2" com.andneiman.tododo 2>/dev/null || true
               xcrun simctl launch "$2" com.andneiman.tododo -demo YES -demoScreen $screen
               sleep 6

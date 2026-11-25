@@ -10,7 +10,7 @@ struct TaskListView: View {
     @State private var renamingSection: String?
     @State private var sectionText = ""
     @State private var justAdded: String?
-    @State private var editingSection: String?
+    @State private var editingSection: String? = RootView.demoScreen == "section" ? "demo-12" : nil
     @FocusState private var adding: Bool
     @FocusState private var sectionFocused: Bool
 
@@ -124,8 +124,7 @@ struct TaskListView: View {
             set: { editingSection = $0?.id }
         )) { ref in
             SectionEditor(id: ref.id)
-                .presentationDetents([.height(260)])
-                .presentationDragIndicator(.visible)
+                .presentationDetents([.medium, .large])
         }
         #endif
     }
@@ -307,44 +306,74 @@ private struct SectionEditor: View {
     @Environment(\.dismiss) private var dismiss
     let id: String
     @State private var name = ""
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         let color = SectionColor(stored: store.record(id)?.data.color)
-        VStack(alignment: .leading, spacing: 18) {
-            TextField("Section Name", text: $name)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(color.color)
-                .submitLabel(.done)
-                .onSubmit { dismiss() }
-            HStack(spacing: 10) {
-                ForEach(SectionColor.allCases) { c in
-                    Button {
-                        store.setColor(id, to: c == .black ? nil : c.rawValue)
-                    } label: {
-                        Circle()
-                            .fill(c.color)
-                            .frame(width: 26, height: 26)
-                            .overlay {
-                                if c == color {
-                                    Circle().strokeBorder(.background, lineWidth: 2.5).padding(2)
-                                }
-                            }
+        // Laid out like the task details: a grouped form with a title bar and Done.
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "number")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(color.color)
+                            .frame(width: 22)
+                        TextField("Section Name", text: $name)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(color.color)
+                            .focused($nameFocused)
+                            .submitLabel(.done)
+                            .onSubmit { dismiss() }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(c.name)
+                    .padding(.vertical, 6)
+                }
+
+                Section("Color") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 14) {
+                        ForEach(SectionColor.allCases) { c in
+                            Button {
+                                store.setColor(id, to: c == .black ? nil : c.rawValue)
+                            } label: {
+                                Circle()
+                                    .fill(c.color)
+                                    .frame(width: 32, height: 32)
+                                    .overlay {
+                                        if c == color {
+                                            Circle().strokeBorder(.white, lineWidth: 3).padding(3)
+                                        }
+                                    }
+                                    .overlay {
+                                        if c == color { Circle().strokeBorder(c.color.opacity(0.35), lineWidth: 2).padding(-4) }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(c.name)
+                            .accessibilityAddTraits(c == color ? .isSelected : [])
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                Section {
+                    Button("Delete Section", systemImage: "trash", role: .destructive) {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.taskLeave) { store.deleteTask(id) }
+                        }
+                    }
+                    .foregroundStyle(.red)
                 }
             }
-            Button("Delete Section", systemImage: "trash", role: .destructive) {
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.taskLeave) { store.deleteTask(id) }
+            .navigationTitle("Section")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
-            .font(.body)
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 28)
         .onAppear { name = store.record(id)?.title ?? "" }
         .onDisappear {
             let t = name.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -62,7 +62,7 @@ struct RootView: View {
 
     private static var initialSelection: Scope? {
         switch demoScreen {
-        case "myday", "detail": return .myDay
+        case "myday", "detail", "section": return .myDay
         case "list": return .list("demo-2")
         case "empty": return .list("demo-3")
         case "home", "search": return nil
