@@ -182,11 +182,13 @@ struct TaskRow: View {
                     }
                     .buttonStyle(.borderless)
                     .help(task.isImportant ? "Remove from Important" : "Mark as Important")
+                    .transition(.opacity)   // appears and disappears with a fade, never slides
                 }
                 if task.isMyDay && scope != .myDay && !task.isDone {
                     Image(systemName: "sun.max")
                         .foregroundStyle(Color.orange)
                         .accessibilityLabel("In My Day")
+                        .transition(.opacity)
                 }
             }
         }
@@ -484,7 +486,8 @@ extension Store {
     /// fades out where it is, the other rows slide down to make room, then it fades in at the top.
     func star(_ id: String) {
         guard let task = record(id), !task.isImportant, !task.isDone, liftingID == nil else {
-            withAnimation(.taskLeave) { toggleImportant(id) }
+            // Unstarring: the star just fades out (in Important the row fades away).
+            withAnimation(.easeOut(duration: 0.25)) { toggleImportant(id) }
             return
         }
         lift(id) { self.toggleImportant(id) }
