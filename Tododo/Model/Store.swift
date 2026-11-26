@@ -250,10 +250,12 @@ final class Store {
         // Changes within a moment (one action touching several records, or typing) form one undo step.
         if let last = undoStack.last, t.timeIntervalSince(last.at) < 0.8 {
             var before = last.before
-            if before[id] == nil { before[id] = .some(old) }
+            if before.index(forKey: id) == nil { before.updateValue(old, forKey: id) }
             undoStack[undoStack.count - 1] = (t, before)
         } else {
-            undoStack.append((t, [id: .some(old)]))
+            var before: [String: Record?] = [:]
+            before.updateValue(old, forKey: id)
+            undoStack.append((t, before))
             if undoStack.count > 100 { undoStack.removeFirst() }
         }
     }
