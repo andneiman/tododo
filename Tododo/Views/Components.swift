@@ -314,7 +314,7 @@ struct TaskMenu: View {
             store.star(task.id)
         }
         Menu("Move to", systemImage: "folder") {
-            Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
+            Button(store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
             ForEach(store.lists) { list in
                 Button(list.title) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: list.id) } }
             }
@@ -713,6 +713,69 @@ struct AddBarTuningPanel: View {
     /// Send this line to Claude to lock the look in.
     private var summary: String {
         String(format: "glass=%d edge=%d frost=%.2f rim=%.2f/%.2f shadow=%.2f/%.1f", glass, edge, tint, rim, rimWidth, shadow, radius)
+    }
+}
+#endif
+
+#if os(macOS)
+/// A right-click menu for sidebar rows that doesn't make the list draw its blue
+/// "menu target" outline: the click is caught here and never reaches the table.
+enum MacMenuItem {
+    case button(String, () -> Void)
+    case submenu(String, [MacMenuItem])
+    case separator
+}
+
+struct MacContextMenu: NSViewRepresentable {
+    let items: [MacMenuItem]
+
+    func makeNSView(context: Context) -> Catcher { Catcher() }
+    func updateNSView(_ view: Catcher, context: Context) { view.items = items }
+
+    final class Catcher: NSView {
+        var items: [MacMenuItem] = []
+
+        /// Only right-clicks (and control-clicks) land here; everything else passes through.
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let e = NSApp.currentEvent else { return nil }
+            let menuClick = e.type == .rightMouseDown
+                || (e.type == .leftMouseDown && e.modifierFlags.contains(.control))
+            return menuClick ? super.hitTest(point) : nil
+        }
+
+        override func rightMouseDown(with event: NSEvent) { show(event) }
+        override func mouseDown(with event: NSEvent) { show(event) }
+
+        private func show(_ event: NSEvent) {
+            NSMenu.popUpContextMenu(Self.build(items), with: event, for: self)
+        }
+
+        private static func build(_ items: [MacMenuItem]) -> NSMenu {
+            let menu = NSMenu()
+            for item in items {
+                switch item {
+                case .separator:
+                    menu.addItem(.separator())
+                case .button(let title, let run):
+                    let action = Action(run)
+                    let mi = NSMenuItem(title: title, action: #selector(Action.fire), keyEquivalent: "")
+                    mi.target = action
+                    mi.representedObject = action   // keeps the (weak) target alive
+                    menu.addItem(mi)
+                case .submenu(let title, let children):
+                    let mi = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                    mi.submenu = build(children)
+                    menu.addItem(mi)
+                }
+            }
+            return menu
+        }
+    }
+
+    final class Action: NSObject {
+        let run: () -> Void
+        init(_ run: @escaping () -> Void) { self.run = run }
+        @objc func fire() { run() }
     }
 }
 #endif

@@ -5,7 +5,12 @@ import { setRecord, listBackups, getBackup, backend } from './store.js';
 export const INBOX = '00000000-0000-0000-0000-000000000001';
 const INBOX_NAME = 'Tasks';
 
-const live = (state, kind) => Object.values(state.records).filter((r) => r.kind === kind && !r.deleted);
+// The first list ("Tasks") has no record unless renamed; then a list record with the INBOX id holds its name.
+const live = (state, kind) => Object.values(state.records).filter((r) => r.kind === kind && !r.deleted && r.id !== INBOX);
+const inboxName = (state) => {
+  const r = state.records[INBOX];
+  return r && !r.deleted && r.data.name ? r.data.name : INBOX_NAME;
+};
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const byPos = (key) => (a, b) => (a.data[key] ?? a.data.position ?? 0) - (b.data[key] ?? b.data.position ?? 0);
 const fail = (msg) => { throw new Error(msg); };
@@ -20,17 +25,17 @@ function remove(state, rec) {
 }
 
 function listName(state, id) {
-  if (id === INBOX) return INBOX_NAME;
+  if (id === INBOX) return inboxName(state);
   const l = state.records[id];
-  return l && !l.deleted ? l.data.name : INBOX_NAME;
+  return l && !l.deleted ? l.data.name : inboxName(state);
 }
 function resolveList(state, ref) {
   if (ref === undefined || ref === null || ref === '') return INBOX;
   const n = norm(ref);
-  if (ref === INBOX || ['inbox', 'tasks', 'задачи'].includes(n)) return INBOX;
+  if (ref === INBOX || ['inbox', 'tasks', 'задачи', norm(inboxName(state))].includes(n)) return INBOX;
   const lists = live(state, 'list');
   const hit = lists.find((l) => l.id === ref) || lists.find((l) => norm(l.data.name) === n);
-  if (!hit) fail(`List "${ref}" not found. Available: ${[INBOX_NAME, ...lists.map((l) => l.data.name)].join(', ')}`);
+  if (!hit) fail(`List "${ref}" not found. Available: ${[inboxName(state), ...lists.map((l) => l.data.name)].join(', ')}`);
   return hit.id;
 }
 function getTask(state, id) {
@@ -103,7 +108,7 @@ export const tools = [
         my_day_open: open.filter((t) => t.data.myDay).length,
         important_open: open.filter((t) => t.data.important).length,
         lists: [
-          { id: INBOX, name: INBOX_NAME, open: open.filter((t) => t.data.listId === INBOX).length },
+          { id: INBOX, name: inboxName(state), open: open.filter((t) => t.data.listId === INBOX).length },
           ...live(state, 'list').sort(byPos('position')).map((l) => ({
             id: l.id, name: l.data.name,
             ...(l.data.groupId && groups[l.data.groupId] ? { group: groups[l.data.groupId] } : {}),
@@ -319,7 +324,7 @@ export const tools = [
   },
   {
     name: 'manage_list',
-    description: 'Create, rename, regroup or delete a list. action "create" needs name; "update"/"delete" need list (name or id). group: group name to put the list in (created if missing); empty string removes it from its group. Deleting a list deletes its tasks.',
+    description: 'Create, rename, regroup or delete a list. action "create" needs name; "update"/"delete" need list (name or id). group: group name to put the list in (created if missing); empty string removes it from its group. Deleting a list deletes its tasks. The first list (default "Tasks") can be renamed but not deleted.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -340,13 +345,21 @@ export const tools = [
       };
       if (a.action === 'create') {
         const name = String(a.name ?? '').trim() || fail('name is required');
-        if (live(state, 'list').some((l) => norm(l.data.name) === norm(name)) || norm(name) === norm(INBOX_NAME)) fail(`List "${name}" already exists`);
+        if (live(state, 'list').some((l) => norm(l.data.name) === norm(name)) || norm(name) === norm(inboxName(state))) fail(`List "${name}" already exists`);
         const g = groupId();
         const rec = setRecord(state, randomUUID(), 'list', { name, position: slot(live(state, 'list'), 'position'), ...(g ? { groupId: g } : {}) });
         return { id: rec.id, name };
       }
       const id = resolveList(state, a.list ?? fail('list is required'));
-      if (id === INBOX) fail('The default "Tasks" list cannot be changed or deleted');
+      if (id === INBOX) {
+        // The first list can be renamed, but not deleted or put into a group.
+        if (a.action === 'delete') fail(`The first list "${inboxName(state)}" cannot be deleted`);
+        if (a.group !== undefined) fail(`The first list "${inboxName(state)}" cannot be put into a group`);
+        const name = String(a.name ?? '').trim() || fail('name is required');
+        const cur = state.records[INBOX];
+        const rec = setRecord(state, INBOX, 'list', { name }, false, Math.max(Date.now(), (cur?.updatedAt ?? 0) + 1));
+        return { id: rec.id, name };
+      }
       const l = state.records[id];
       if (a.action === 'delete') {
         const tasks = live(state, 'task').filter((t) => t.data.listId === id);

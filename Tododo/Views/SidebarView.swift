@@ -83,7 +83,7 @@ struct SidebarView: View {
         // Lists and group titles are one list, so a list can be dragged anywhere —
         // up or down, or under another group's title to move it into that group.
         Section("Lists") {
-            smartRow(.inbox, Store.inboxName, "list.bullet")
+            inboxRow
             ForEach(rows) { row in
                 switch row {
                 case .list(let list): listRow(list)
@@ -156,12 +156,22 @@ struct SidebarView: View {
         .listRowSeparator(.hidden)
         .selectionDisabled()
         // Long press (right-click on the Mac) anywhere on the group's title row.
+        // Deleting a group keeps its lists: they move out to the top level.
+        #if os(macOS)
+        .overlay(MacContextMenu(items: [
+            .button("Rename Group") { startEditing(group.id, text: group.title) },
+            .button("New List in Group") { newList(in: group.id) },
+            .separator,
+            .button("Delete Group") { store.deleteGroup(group.id) },
+        ]))
+        #else
         .contextMenu {
             Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
             Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
             Divider()
-            Button("Ungroup", systemImage: "folder.badge.minus") { store.deleteGroup(group.id) }
+            Button("Delete Group", systemImage: "trash", role: .destructive) { store.deleteGroup(group.id) }
         }
+        #endif
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Rename", systemImage: "pencil") { startEditing(group.id, text: group.title) }
                 .tint(.gray)
@@ -183,6 +193,40 @@ struct SidebarView: View {
         }
     }
     #endif
+
+    /// The first list: always there and can't be deleted, but it can be renamed.
+    @ViewBuilder
+    private var inboxRow: some View {
+        Group {
+            if editingID == Store.inboxID {
+                Label {
+                    TextField("List Name", text: $editText, prompt: Text(Store.defaultInboxName))
+                        .textFieldStyle(.plain)
+                        .focused($editFocused)
+                        .onSubmit { editFocused = false }
+                } icon: {
+                    Image(systemName: "list.bullet")
+                }
+            } else {
+                Label(store.inboxName, systemImage: "list.bullet")
+                    .badge(store.openCount(.inbox))
+            }
+        }
+        .tag(Scope.inbox)
+        #if os(macOS)
+        .overlay(MacContextMenu(items: [
+            .button("Rename") { startEditing(Store.inboxID, text: store.inboxName) },
+        ]))
+        #else
+        .contextMenu {
+            Button("Rename", systemImage: "pencil") { startEditing(Store.inboxID, text: store.inboxName) }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button("Rename", systemImage: "pencil") { startEditing(Store.inboxID, text: store.inboxName) }
+                .tint(.gray)
+        }
+        #endif
+    }
 
     private func smartRow(_ scope: Scope, _ title: String, _ icon: String) -> some View {
         Label(title, systemImage: icon)
@@ -208,6 +252,16 @@ struct SidebarView: View {
             }
         }
         .tag(Scope.list(list.id))
+        #if os(macOS)
+        .overlay(MacContextMenu(items: [
+            .button("Rename") { startEditing(list.id, text: list.title) },
+            .submenu("Move to Group", [.button("Lists") { store.setGroup(ofList: list.id, to: nil) }]
+                + (store.groups.isEmpty ? [] : [.separator])
+                + store.groups.map { g in .button(g.title) { store.setGroup(ofList: list.id, to: g.id) } }),
+            .separator,
+            .button("Delete List") { listToDelete = list },
+        ]))
+        #else
         .contextMenu {
             Button("Rename", systemImage: "pencil") { startEditing(list.id, text: list.title) }
             Menu("Move to Group", systemImage: "folder") {
@@ -220,6 +274,7 @@ struct SidebarView: View {
             Divider()
             Button("Delete List", systemImage: "trash", role: .destructive) { listToDelete = list }
         }
+        #endif
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Delete", systemImage: "trash", role: .destructive) { listToDelete = list }
         }

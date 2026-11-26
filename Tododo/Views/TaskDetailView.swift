@@ -109,7 +109,7 @@ private struct TaskForm: View {
                     Label("Important", systemImage: "star")
                 }
                 Picker(selection: listBinding) {
-                    Text(Store.inboxName).tag(Store.inboxID)
+                    Text(store.inboxName).tag(Store.inboxID)
                     ForEach(store.lists) { list in
                         Text(list.title).tag(list.id)
                     }
@@ -393,7 +393,7 @@ private struct MacTaskPane: View {
                         store.star(task.id)
                     }
                     Menu {
-                        Button(Store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
+                        Button(store.inboxName) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: Store.inboxID) } }
                         if !store.lists.isEmpty { Divider() }
                         ForEach(store.lists) { list in
                             Button(list.title) { withAnimation(.taskLeave) { store.moveTask(task.id, toList: list.id) } }

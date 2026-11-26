@@ -12,7 +12,13 @@ import UIKit
 @Observable
 final class Store {
     static let inboxID = "00000000-0000-0000-0000-000000000001"
-    static let inboxName = "Tasks"
+    static let defaultInboxName = "Tasks"
+
+    /// The first list's name. It can be renamed (stored as a list record with the inbox id) but never deleted.
+    var inboxName: String {
+        guard let r = record(Self.inboxID), !r.title.isEmpty else { return Self.defaultInboxName }
+        return r.title
+    }
 
     private(set) var records: [String: Record] = [:]
     private(set) var syncStatus: SyncStatus = .idle
@@ -143,7 +149,7 @@ final class Store {
     }
 
     var lists: [Record] {
-        live(.list).sorted(by: Self.byPosition)
+        live(.list).filter { $0.id != Self.inboxID }.sorted(by: Self.byPosition)
     }
 
     /// Lists in a group; `nil` returns lists without a (live) group.
@@ -156,7 +162,7 @@ final class Store {
     }
 
     func listName(_ id: String?) -> String {
-        guard let id, id != Self.inboxID, let l = record(id) else { return Self.inboxName }
+        guard let id, id != Self.inboxID, let l = record(id) else { return inboxName }
         return l.title
     }
 
@@ -164,7 +170,7 @@ final class Store {
         switch scope {
         case .myDay: return "My Day"
         case .important: return "Important"
-        case .inbox: return Self.inboxName
+        case .inbox: return inboxName
         case .list(let id): return listName(id)
         }
     }
@@ -416,6 +422,13 @@ final class Store {
     /// Renames a task, step, list or group.
     func rename(_ id: String, to raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if id == Self.inboxID, record(id) == nil {
+            guard !text.isEmpty, text != Self.defaultInboxName else { return }
+            var d = Payload()
+            d.name = text
+            commit(Record(id: id, kind: .list, data: d, updatedAt: 0, deleted: false))
+            return
+        }
         guard !text.isEmpty, let r = record(id), r.title != text else { return }
         update(id) {
             if r.kind == .task || r.kind == .step { $0.title = text } else { $0.name = text }
@@ -548,6 +561,7 @@ final class Store {
     }
 
     func deleteList(_ id: String) {
+        guard id != Self.inboxID else { return }   // the first list can't be deleted
         live(.task).filter { $0.data.listId == id }.forEach { deleteTask($0.id) }
         remove(id)
     }
