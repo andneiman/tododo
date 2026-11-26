@@ -162,6 +162,10 @@ struct TaskListView: View {
             .foregroundStyle(SectionColor(stored: item.data.color).color)
             .padding(.top, sectionTopPadding)
             .padding(.bottom, sectionBottomPadding)
+            #if os(iOS)
+            // Sit the section title closer to its first task (gap −20%, ~8pt).
+            .offset(y: 8)
+            #endif
             .listRowSeparator(.hidden)
             #if os(macOS)
             .contextMenu {
