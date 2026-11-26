@@ -418,19 +418,6 @@ private struct MacTaskPane: View {
                 .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
-            .overlay(alignment: .topTrailing) {
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 36, height: 36)   // big, forgiving click area
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Close (Esc)")
-                .padding(.top, 2)
-                .padding(.trailing, 4)
-            }
 
             Divider()
             HStack {
@@ -453,6 +440,21 @@ private struct MacTaskPane: View {
         }
         // Clicking empty space in the pane closes it.
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { onClose() })
+        // Close button up in the title-bar row, level with the window buttons and the sidebar toggle.
+        .overlay(alignment: .topTrailing) {
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)   // big, forgiving click area
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Close (Esc)")
+            .padding(.top, 21)
+            .padding(.trailing, 8)
+            .ignoresSafeArea(.container, edges: .top)
+        }
         .onAppear { title = task.title }
         // A typed step is kept even without pressing return: on close, on Done, on switching tasks, on tapping away.
         .onDisappear { saveDraftStep(for: task.id) }
