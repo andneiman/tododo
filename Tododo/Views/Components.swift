@@ -618,11 +618,11 @@ struct AddBarTuning {
     @AppStorage("tune.rimWidth") var rimWidth = 0.75
     @AppStorage("tune.shadow") var shadow = 0.06     // shadow opacity 0…0.3
     @AppStorage("tune.radius") var radius = 5.0      // shadow blur 0…24
-    @AppStorage("tune.edge") var edge = 0            // bottom edge: 0 none, 1 soft, 2 hard
+    @AppStorage("tune.edge") var edge = 1            // bottom edge: 0 none, 1 soft, 2 hard
 }
 
 struct BottomEdgeEffect: ViewModifier {
-    @AppStorage("tune.edge") private var edge = 0
+    @AppStorage("tune.edge") private var edge = 1
     func body(content: Content) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
             #if os(iOS)
@@ -674,14 +674,14 @@ struct AddBarTuningPanel: View {
     @AppStorage("tune.rimWidth") private var rimWidth = 0.75
     @AppStorage("tune.shadow") private var shadow = 0.06
     @AppStorage("tune.radius") private var radius = 5.0
-    @AppStorage("tune.edge") private var edge = 0
+    @AppStorage("tune.edge") private var edge = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Add field look").font(.headline)
                 Spacer()
-                Button("Reset") { glass = 0; tint = 0; rim = 0.12; rimWidth = 0.75; shadow = 0.06; radius = 5; edge = 0 }
+                Button("Reset") { glass = 0; tint = 0; rim = 0.12; rimWidth = 0.75; shadow = 0.06; radius = 5; edge = 1 }
                 Button("Done") { isShown = false }.bold()
             }
             Picker("Glass", selection: $glass) {
