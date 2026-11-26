@@ -86,6 +86,9 @@ final class Store {
         _ = add(.task) { $0.title = "Think About"; $0.isSection = true; $0.myDay = true; $0.color = "indigo" }
         _ = add(.task) { $0.title = "Onboarding idea"; $0.myDay = true; $0.listId = work }
         _ = add(.task) { $0.title = "Where to go in January"; $0.myDay = true }
+        for t in ["Renew the passport", "Book the dentist", "Call the landlord about the heater", "Pick up the dry cleaning", "Plan the team offsite", "Read the investor update"] {
+            _ = add(.task) { $0.title = t; $0.myDay = true }
+        }
         _ = add(.task) { $0.title = "Order water"; $0.myDay = true; $0.completed = true; $0.completedAt = now }
         _ = add(.task) { $0.title = "Oat milk"; $0.listId = "demo-4" }
         _ = add(.task) { $0.title = "Release"; $0.isSection = true; $0.listId = work }
