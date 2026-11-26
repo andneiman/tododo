@@ -237,9 +237,48 @@ final class Store {
 
     private var now: Double { (Date().timeIntervalSince1970 * 1000 + clockOffset).rounded() }
 
+    // MARK: Undo (⌘Z)
+
+    /// Each entry: how the touched records looked before one action (nil = didn't exist).
+    private var undoStack: [(at: Date, before: [String: Record?])] = []
+    private var undoing = false
+    var canUndo: Bool { !undoStack.isEmpty }
+
+    private func rememberForUndo(_ id: String, old: Record?) {
+        guard !undoing else { return }
+        let t = Date()
+        // Changes within a moment (one action touching several records, or typing) form one undo step.
+        if let last = undoStack.last, t.timeIntervalSince(last.at) < 0.8 {
+            var before = last.before
+            if before[id] == nil { before[id] = .some(old) }
+            undoStack[undoStack.count - 1] = (t, before)
+        } else {
+            undoStack.append((t, [id: .some(old)]))
+            if undoStack.count > 100 { undoStack.removeFirst() }
+        }
+    }
+
+    /// Puts back the records touched by the last action. Syncs like any other change.
+    func undo() {
+        guard let step = undoStack.popLast() else { return }
+        undoing = true
+        defer { undoing = false }
+        for (id, old) in step.before {
+            guard var r = records[id] else { continue }
+            if let old {
+                r.data = old.data
+                r.deleted = old.deleted
+            } else {
+                r.deleted = true   // it was created by that action
+            }
+            commit(r)
+        }
+    }
+
     private func commit(_ record: Record) {
         var r = record
         let old = records[r.id]
+        rememberForUndo(r.id, old: old)
         let stamp = max(now, (old?.updatedAt ?? 0) + 1)
         var ft = old?.ft ?? [:]
         for field in r.data.changedFields(from: old?.data ?? Payload()) { ft[field] = stamp }

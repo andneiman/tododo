@@ -430,10 +430,10 @@ private struct MacTaskPane: View {
                     onClose()
                 } label: {
                     Image(systemName: "trash")
+                        .foregroundStyle(.red)
                 }
                 .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-                .help("Delete Task")
+                .help("Delete Task (⌘Z to undo)")
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)

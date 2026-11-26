@@ -60,6 +60,12 @@ struct TododoApp: App {
         .commands {
             // ⌘N adds a task (see the toolbar), not a second window.
             CommandGroup(replacing: .newItem) {}
+            // ⌘Z undoes the last change to tasks, steps and lists (completing, deleting, moving, renaming…).
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") { store.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(!store.canUndo)
+            }
         }
         #endif
 
