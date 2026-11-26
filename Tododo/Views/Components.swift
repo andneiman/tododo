@@ -16,17 +16,22 @@ extension View {
         }
     }
 
+    /// Glass with a light white frost, for a floating field over busy content.
+    @ViewBuilder
+    func frostedGlassCapsule() -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            self.glassEffect(.regular.tint(.white.opacity(0.55)).interactive(), in: Capsule())
+        } else {
+            self.background(.regularMaterial, in: Capsule())
+        }
+    }
+
     /// Content fades softly under floating glass controls.
     @ViewBuilder
     func softScrollEdges() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
             // Bottom only: on the Mac the list runs up to the window top (no toolbar), so a top fade would hide the title.
-            // iPhone: a hard edge, so the list doesn't show around the add field (like ChatGPT's search bar).
-            #if os(iOS)
-            self.scrollEdgeEffectStyle(.hard, for: .bottom)
-            #else
             self.scrollEdgeEffectStyle(.soft, for: .bottom)
-            #endif
         } else {
             self
         }

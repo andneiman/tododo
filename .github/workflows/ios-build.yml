@@ -3,6 +3,10 @@ on:
   push:
     paths: ["Tododo/**", "Tododo.xcodeproj/**", "Support/**", "scripts/**", "backend/**", ".github/workflows/ios-build.yml"]
   workflow_dispatch:
+    inputs:
+      screens:
+        description: "Only these iPhone screens (e.g. 'myday'); empty = full check"
+        default: ""
 permissions:
   contents: write
 jobs:
@@ -43,13 +47,15 @@ jobs:
         if: failure()
         run: grep -n -B2 -A6 "error:" build.log | head -200 || tail -80 build.log
       - name: Screenshots of every screen
+        env:
+          SCREENS: ${{ inputs.screens }}
         run: |
           mkdir -p shots
           shoot() { # name-prefix, simulator udid
             xcrun simctl boot "$2" || true
             xcrun simctl bootstatus "$2" -b
             xcrun simctl install "$2" build/Debug-iphonesimulator/Tododo.app
-            for screen in home myday list detail section settings search empty lock; do
+            for screen in ${SCREENS:-home myday list detail section settings search empty lock}; do
               xcrun simctl terminate "$2" com.andneiman.tododo 2>/dev/null || true
               xcrun simctl launch "$2" com.andneiman.tododo -demo YES -demoScreen $screen
               sleep 6
@@ -61,7 +67,7 @@ jobs:
           BIG=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9] Pro \(" | head -1 | grep -oE "[0-9A-F-]{36}")
           SMALL=$(xcrun simctl list devices available | grep -E "iPhone SE|iPhone 1[6-7]e" | head -1 | grep -oE "[0-9A-F-]{36}")
           shoot iphone "$BIG"
-          if [ -n "$SMALL" ]; then shoot se "$SMALL"; fi
+          if [ -n "$SMALL" ] && [ -z "$SCREENS" ]; then shoot se "$SMALL"; fi
           for f in shots/*.png; do sips -Z 1100 -s format jpeg -s formatOptions 70 "$f" --out "${f%.png}.jpg" >/dev/null; done
           rm shots/*.png
       - name: Publish screenshots to the ci-shots branch
@@ -72,7 +78,7 @@ jobs:
           git add . && git commit -q -m "Screenshots for ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
   mac:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.screens == ''
     runs-on: macos-26
     timeout-minutes: 25
     steps:
