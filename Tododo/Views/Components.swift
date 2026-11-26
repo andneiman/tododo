@@ -30,8 +30,13 @@ extension View {
     @ViewBuilder
     func softScrollEdges() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
+            #if os(iOS)
+            // iPhone: no fade at all — the list stays crisp right up to and under the glass add field (like ChatGPT).
+            self.scrollEdgeEffectHidden(true, for: .bottom)
+            #else
             // Bottom only: on the Mac the list runs up to the window top (no toolbar), so a top fade would hide the title.
             self.scrollEdgeEffectStyle(.soft, for: .bottom)
+            #endif
         } else {
             self
         }
