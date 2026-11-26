@@ -20,7 +20,7 @@ extension View {
     @ViewBuilder
     func frostedGlassCapsule() -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            self.glassEffect(.regular.tint(.white.opacity(0.55)).interactive(), in: Capsule())
+            self.glassEffect(.clear.interactive(), in: Capsule())   // see-through, like ChatGPT's bar
         } else {
             self.background(.regularMaterial, in: Capsule())
         }

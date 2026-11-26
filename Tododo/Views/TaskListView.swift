@@ -220,11 +220,11 @@ struct TaskListView: View {
         .padding(.horizontal, 16)
         #if os(iOS)
         .padding(.vertical, 14)
-        // Like ChatGPT's field: frosted Liquid Glass (the list shows through, softly), a clear gray rim
+        // Like ChatGPT's field: clear Liquid Glass (the list shows through), a clear gray rim
         // and a soft shadow, so it stands out from the list instead of melting into it.
         .frostedGlassCapsule()
-        .overlay(Capsule().strokeBorder(Color.black.opacity(0.13), lineWidth: 1))
-        .shadow(color: .black.opacity(0.09), radius: 12, y: 3)
+        .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.75))
+        .shadow(color: .black.opacity(0.06), radius: 5, y: 1)
         #else
         .padding(.vertical, 12)
         .glassCapsule()
