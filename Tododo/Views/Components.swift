@@ -26,21 +26,8 @@ extension View {
         }
     }
 
-    /// Content fades softly under floating glass controls.
-    @ViewBuilder
-    func softScrollEdges() -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            #if os(iOS)
-            // iPhone: no fade at all — the list stays crisp right up to and under the glass add field (like ChatGPT).
-            self.scrollEdgeEffectHidden(true, for: .bottom)
-            #else
-            // Bottom only: on the Mac the list runs up to the window top (no toolbar), so a top fade would hide the title.
-            self.scrollEdgeEffectStyle(.soft, for: .bottom)
-            #endif
-        } else {
-            self
-        }
-    }
+    /// Content fades softly under floating glass controls (iPhone: as tuned in the add-field panel).
+    func softScrollEdges() -> some View { modifier(BottomEdgeEffect()) }
 
     /// The list draws its own large title on the Mac, so the window toolbar stays clean.
     @ViewBuilder
@@ -621,3 +608,111 @@ extension Color {
         #endif
     }
 }
+
+/// TEMPORARY: live-tunable look of the iPhone add field (glass, rim, shadow, edge effect).
+/// Values persist on the device; once picked, they become the fixed design and this goes away.
+struct AddBarTuning {
+    @AppStorage("tune.glass") var glass = 0          // 0 regular, 1 clear, 2 material
+    @AppStorage("tune.tint") var tint = 0.0          // white frost 0…1
+    @AppStorage("tune.rim") var rim = 0.12           // rim opacity 0…0.4
+    @AppStorage("tune.rimWidth") var rimWidth = 0.75
+    @AppStorage("tune.shadow") var shadow = 0.06     // shadow opacity 0…0.3
+    @AppStorage("tune.radius") var radius = 5.0      // shadow blur 0…24
+    @AppStorage("tune.edge") var edge = 0            // bottom edge: 0 none, 1 soft, 2 hard
+}
+
+struct BottomEdgeEffect: ViewModifier {
+    @AppStorage("tune.edge") private var edge = 0
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            #if os(iOS)
+            switch edge {
+            case 1: content.scrollEdgeEffectStyle(.soft, for: .bottom)
+            case 2: content.scrollEdgeEffectStyle(.hard, for: .bottom)
+            default: content.scrollEdgeEffectHidden(true, for: .bottom)
+            }
+            #else
+            content.scrollEdgeEffectStyle(.soft, for: .bottom)
+            #endif
+        } else {
+            content
+        }
+    }
+}
+
+struct TunedAddBarBackground: ViewModifier {
+    @AppStorage("tune.glass") private var glass = 0
+    @AppStorage("tune.tint") private var tint = 0.0
+    @AppStorage("tune.rim") private var rim = 0.12
+    @AppStorage("tune.rimWidth") private var rimWidth = 0.75
+    @AppStorage("tune.shadow") private var shadow = 0.06
+    @AppStorage("tune.radius") private var radius = 5.0
+
+    func body(content: Content) -> some View {
+        styled(content)
+            .overlay(Capsule().strokeBorder(Color.black.opacity(rim), lineWidth: rimWidth))
+            .shadow(color: .black.opacity(shadow), radius: radius, y: radius / 4)
+    }
+
+    @ViewBuilder private func styled(_ content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *), glass != 2 {
+            let base: Glass = glass == 1 ? .clear : .regular
+            content.glassEffect(base.tint(.white.opacity(tint)).interactive(), in: Capsule())
+        } else {
+            content.background(.regularMaterial, in: Capsule())
+        }
+    }
+}
+
+#if os(iOS)
+/// TEMPORARY panel to tune the add field live (opened from the slider button in the list's title bar).
+struct AddBarTuningPanel: View {
+    @Binding var isShown: Bool
+    @AppStorage("tune.glass") private var glass = 0
+    @AppStorage("tune.tint") private var tint = 0.0
+    @AppStorage("tune.rim") private var rim = 0.12
+    @AppStorage("tune.rimWidth") private var rimWidth = 0.75
+    @AppStorage("tune.shadow") private var shadow = 0.06
+    @AppStorage("tune.radius") private var radius = 5.0
+    @AppStorage("tune.edge") private var edge = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Add field look").font(.headline)
+                Spacer()
+                Button("Reset") { glass = 0; tint = 0; rim = 0.12; rimWidth = 0.75; shadow = 0.06; radius = 5; edge = 0 }
+                Button("Done") { isShown = false }.bold()
+            }
+            Picker("Glass", selection: $glass) {
+                Text("Regular").tag(0); Text("Clear").tag(1); Text("Material").tag(2)
+            }.pickerStyle(.segmented)
+            Picker("Under the field", selection: $edge) {
+                Text("No fade").tag(0); Text("Soft fade").tag(1); Text("Hard").tag(2)
+            }.pickerStyle(.segmented)
+            row("Frost", $tint, 0...1)
+            row("Rim", $rim, 0...0.4)
+            row("Rim width", $rimWidth, 0...2)
+            row("Shadow", $shadow, 0...0.3)
+            row("Shadow blur", $radius, 0...24)
+            Text(summary).font(.caption.monospaced()).foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.horizontal, 12)
+    }
+
+    private func row(_ name: String, _ v: Binding<Double>, _ r: ClosedRange<Double>) -> some View {
+        HStack {
+            Text(name).font(.subheadline).frame(width: 92, alignment: .leading)
+            Slider(value: v, in: r)
+            Text(String(format: "%.2f", v.wrappedValue)).font(.caption.monospaced()).frame(width: 40)
+        }
+    }
+
+    /// Send this line to Claude to lock the look in.
+    private var summary: String {
+        String(format: "glass=%d edge=%d frost=%.2f rim=%.2f/%.2f shadow=%.2f/%.1f", glass, edge, tint, rim, rimWidth, shadow, radius)
+    }
+}
+#endif

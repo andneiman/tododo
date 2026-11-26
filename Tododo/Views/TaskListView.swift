@@ -10,6 +10,7 @@ struct TaskListView: View {
     @State private var renamingSection: String?
     @State private var sectionText = ""
     @State private var justAdded: String?
+    @State private var showTuning = false
     @State private var editingSection: String? = RootView.demoScreen == "section" ? "demo-12" : nil
     @FocusState private var adding: Bool
     @FocusState private var sectionFocused: Bool
@@ -119,6 +120,19 @@ struct TaskListView: View {
         }
         .modifier(TaskInspector(selection: $selectedTask))
         #if os(iOS)
+        // TEMPORARY: live tuning of the add field's look.
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Tune Add Field", systemImage: "slider.horizontal.3") { withAnimation(.snappy) { showTuning.toggle() } }
+            }
+        }
+        .overlay(alignment: .top) {
+            if showTuning {
+                AddBarTuningPanel(isShown: $showTuning)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .sheet(item: Binding(
             get: { editingSection.map(TaskRef.init(id:)) },
             set: { editingSection = $0?.id }
@@ -222,9 +236,7 @@ struct TaskListView: View {
         .padding(.vertical, 14)
         // Like ChatGPT's field: clear Liquid Glass (the list shows through), a clear gray rim
         // and a soft shadow, so it stands out from the list instead of melting into it.
-        .frostedGlassCapsule()
-        .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.75))
-        .shadow(color: .black.opacity(0.06), radius: 5, y: 1)
+        .modifier(TunedAddBarBackground())   // TEMPORARY: tunable from the slider button
         #else
         .padding(.vertical, 12)
         .glassCapsule()
