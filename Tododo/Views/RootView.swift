@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(Store.self) private var store
     #if os(macOS)
     @Environment(\.openSettings) private var openSettings
     #endif
     @State private var selection: Scope? = RootView.initialSelection
     @State private var query = RootView.demoScreen == "search" ? "bill" : ""
+    @State private var askUndo = false
 
     var body: some View {
         NavigationSplitView {
@@ -21,6 +23,16 @@ struct RootView: View {
         .searchable(text: $query, prompt: "Search")
         #endif
         .onChange(of: selection) { _, _ in query = "" }
+        #if os(iOS)
+        // Shake to undo, like everywhere on iPhone: asks first, then puts back the last change.
+        .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
+            if store.canUndo { askUndo = true }
+        }
+        .alert("Undo the last change?", isPresented: $askUndo) {
+            Button("Cancel", role: .cancel) {}
+            Button("Undo") { withAnimation(.snappy) { store.undo() } }
+        }
+        #endif
         #if os(macOS)
         .onAppear {
             if RootView.demoScreen == "settings" { openSettings() }
@@ -72,3 +84,19 @@ struct RootView: View {
 extension String: @retroactive Identifiable {
     public var id: String { self }
 }
+
+#if os(iOS)
+import UIKit
+
+extension Notification.Name {
+    static let deviceDidShake = Notification.Name("TododoDeviceDidShake")
+}
+
+extension UIWindow {
+    /// iPhone shake gesture → shake to undo.
+    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake { NotificationCenter.default.post(name: .deviceDidShake, object: nil) }
+        super.motionEnded(motion, with: event)
+    }
+}
+#endif
