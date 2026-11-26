@@ -451,7 +451,7 @@ private struct MacTaskPane: View {
             }
             .buttonStyle(.plain)
             .help("Close (Esc)")
-            .padding(.top, 0)
+            .padding(.top, 7)
             .padding(.trailing, 8)
             .ignoresSafeArea(.container, edges: .top)
         }
