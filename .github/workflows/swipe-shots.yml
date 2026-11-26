@@ -1,54 +1,42 @@
-# Real simulator screenshots of swipe gestures (run by hand). Uses idb to drive touches.
-name: Swipe screenshots
+# Real simulator screenshots of gestures (swipes etc.), driven by Apple's own UI testing (run by hand).
+name: Gesture screenshots
 on:
   workflow_dispatch:
-    inputs:
-      screen:
-        description: demo screen to open
-        default: detail
-      swipes:
-        description: "name:x1,y1,x2,y2 (points) separated by spaces"
-        default: "show:340,648,150,648 delete:60,699,260,699"
 jobs:
   shots:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Build for iOS Simulator
+      - name: Run UI screenshot tests
         run: |
-          xcodebuild -project Tododo.xcodeproj -target Tododo -sdk iphonesimulator \
-            -configuration Debug CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 || true
-          grep -q "BUILD SUCCEEDED" build.log || { grep -n -A6 "error:" build.log | head -80; exit 1; }
-      - name: Install idb
+          NAME=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9] Pro \(" | head -1 | sed -E 's/^ *([^(]+) \(.*/\1/' | sed 's/ *$//')
+          echo "Simulator: $NAME"
+          xcodebuild test -project Tododo.xcodeproj -scheme TododoUITests \
+            -destination "platform=iOS Simulator,name=$NAME" -resultBundlePath R.xcresult \
+            CODE_SIGNING_ALLOWED=NO > test.log 2>&1 || { grep -nE "error|failed|Fail" test.log | head -60; }
+          tail -5 test.log
+      - name: Export screenshots
         run: |
-          brew tap facebook/fb >/dev/null && brew install idb-companion >/dev/null
-          pip3 install --quiet --break-system-packages fb-idb || pip3 install --quiet fb-idb
-      - name: Swipe and shoot
-        run: |
-          mkdir -p shots
-          UDID=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9] Pro \(" | head -1 | grep -oE "[0-9A-F-]{36}")
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl install "$UDID" build/Debug-iphonesimulator/Tododo.app
-          idb_companion --udid "$UDID" > companion.log 2>&1 &
-          sleep 8
-          idb connect localhost 10882 || true
-          for spec in ${{ inputs.swipes }}; do
-            name=${spec%%:*}; c=${spec#*:}; IFS=, read x1 y1 x2 y2 <<< "$c"
-            xcrun simctl terminate "$UDID" com.andneiman.tododo 2>/dev/null || true
-            xcrun simctl launch "$UDID" com.andneiman.tododo -demo YES -demoScreen ${{ inputs.screen }}
-            sleep 6
-            idb ui swipe --udid "$UDID" --duration 0.35 $x1 $y1 $x2 $y2 || idb ui swipe $x1 $y1 $x2 $y2 --duration 0.35
-            sleep 1.5
-            xcrun simctl io "$UDID" screenshot "shots/$name.png"
-          done
+          mkdir -p out shots
+          xcrun xcresulttool export attachments --path R.xcresult --output-path out
+          cat out/manifest.json | head -60
+          python3 - <<'PY'
+          import json, shutil, os
+          m = json.load(open('out/manifest.json'))
+          for t in m:
+              for a in t.get('attachments', []):
+                  name = a.get('suggestedHumanReadableName') or a['exportedFileName']
+                  base = name.split('_')[0] if '_' in name else name
+                  shutil.copy(os.path.join('out', a['exportedFileName']), os.path.join('shots', base if base.endswith('.png') else base + '.png'))
+          PY
+          ls shots
           for f in shots/*.png; do sips -Z 1100 -s format jpeg -s formatOptions 75 "$f" --out "${f%.png}.jpg" >/dev/null; done
-          rm shots/*.png
+          rm -f shots/*.png
       - name: Publish to the ci-swipe branch
         run: |
           cd shots
           git init -q -b ci-swipe
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
-          git add . && git commit -q -m "Swipe screenshots for ${GITHUB_SHA::7}"
+          git add . && git commit -q -m "Gesture screenshots for ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-swipe
