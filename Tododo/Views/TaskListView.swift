@@ -187,7 +187,7 @@ struct TaskListView: View {
         return HStack(spacing: 10) {
             Image(systemName: isSection ? "number" : "plus")
                 .font(.body.weight(.medium))
-                .foregroundStyle(isSection ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .foregroundStyle(isSection ? AnyShapeStyle(.tint) : AnyShapeStyle(Self.plusStyle))
                 .frame(width: 18)
             #if os(iOS)
             // Return adds the task and the keyboard stays put (a plain field would drop focus on
@@ -218,13 +218,36 @@ struct TaskListView: View {
             }
         }
         .padding(.horizontal, 16)
+        #if os(iOS)
+        .padding(.vertical, 14)
+        // Like ChatGPT's field: solid white, a hairline edge and a soft lift, over a white fade —
+        // so it stands out from the list instead of melting into it.
+        .background(Capsule().fill(Color(uiColor: .systemBackground)))
+        .overlay(Capsule().strokeBorder(Color.black.opacity(0.10), lineWidth: 1))
+        .shadow(color: .black.opacity(0.10), radius: 14, y: 5)
+        #else
         .padding(.vertical, 12)
         .glassCapsule()
+        #endif
         .help("Start with # to add a section divider")
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, addBarBottomPadding)
+        #if os(iOS)
+        .background(alignment: .bottom) {
+            LinearGradient(colors: [Color(uiColor: .systemBackground).opacity(0), Color(uiColor: .systemBackground)],
+                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.45))
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+        }
+        #endif
     }
+
+    #if os(iOS)
+    static let plusStyle = HierarchicalShapeStyle.primary
+    #else
+    static let plusStyle = HierarchicalShapeStyle.secondary
+    #endif
 
     /// iPhone: the field sits half its own height (~23 pt) lower, closer to the
     /// home indicator. While typing it keeps its gap above the keyboard.
