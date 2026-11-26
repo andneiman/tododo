@@ -220,11 +220,11 @@ struct TaskListView: View {
         .padding(.horizontal, 16)
         #if os(iOS)
         .padding(.vertical, 14)
-        // Like ChatGPT's field: solid white, a hairline edge and a soft lift, over a white fade —
+        // Like ChatGPT's field: Liquid Glass, but with a clear gray rim and a soft shadow,
         // so it stands out from the list instead of melting into it.
-        .background(Capsule().fill(Color(uiColor: .systemBackground)))
-        .overlay(Capsule().strokeBorder(Color.black.opacity(0.10), lineWidth: 1))
-        .shadow(color: .black.opacity(0.10), radius: 14, y: 5)
+        .glassCapsule()
+        .overlay(Capsule().strokeBorder(Color.black.opacity(0.13), lineWidth: 1))
+        .shadow(color: .black.opacity(0.09), radius: 12, y: 3)
         #else
         .padding(.vertical, 12)
         .glassCapsule()
@@ -233,14 +233,6 @@ struct TaskListView: View {
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, addBarBottomPadding)
-        #if os(iOS)
-        .background(alignment: .bottom) {
-            LinearGradient(colors: [Color(uiColor: .systemBackground).opacity(0), Color(uiColor: .systemBackground)],
-                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.45))
-                .ignoresSafeArea(edges: .bottom)
-                .allowsHitTesting(false)
-        }
-        #endif
     }
 
     #if os(iOS)
