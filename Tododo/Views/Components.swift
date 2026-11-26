@@ -157,7 +157,6 @@ struct TaskRow: View {
     @State private var hovering = false
     @State private var titleDraft = ""
     @State private var editingTitle = false
-    @State private var showActions = false
     /// Checked but not yet moved away: the row shows the tick for a beat, then leaves smoothly.
     @State private var completing = false
 
@@ -233,24 +232,6 @@ struct TaskRow: View {
         }
         #if os(macOS)
         .contextMenu { TaskMenu(task: task) }
-        #else
-        // iPhone: a normal long press drags; holding a bit longer without moving opens quick actions
-        // (any movement of the finger — i.e. dragging — cancels the menu).
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 2, maximumDistance: 4).onEnded { _ in
-                guard !task.isSection else { return }
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                showActions = true
-            }
-        )
-        .confirmationDialog(task.title, isPresented: $showActions, titleVisibility: .visible) {
-            Button(task.isImportant ? "Remove Star" : "Mark as Important") { store.star(task.id) }
-            Button(task.isMyDay ? "Remove from My Day" : "Add to My Day") { store.myDay(task.id) }
-            Button("Delete Task", role: .destructive) {
-                withAnimation(.taskLeave) { store.deleteTask(task.id) }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
         #endif
     }
 
