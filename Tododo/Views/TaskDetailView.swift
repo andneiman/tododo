@@ -286,7 +286,14 @@ private struct StepRow: View {
             Button("Delete Step", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
         #endif
+        // iPhone: swipe left — show / hide under the task in the list; swipe right — delete.
         .swipeActions(edge: .trailing) {
+            Button(step.isImportant ? "Hide" : "Show", systemImage: step.isImportant ? "eye.slash" : "eye") {
+                withAnimation(.snappy) { store.toggleStepStar(step.id) }
+            }
+            .tint(Color(white: 0.35))
+        }
+        .swipeActions(edge: .leading) {
             Button("Delete", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
     }
@@ -302,7 +309,7 @@ private struct StepRow: View {
     private var showsStar: Bool {
         guard !step.isDone else { return false }   // completed steps have no eye
         #if os(iOS)
-        return true
+        return step.isImportant   // iPhone: only the "on" eye shows; swipe left to switch it
         #else
         return step.isImportant || hovering
         #endif
