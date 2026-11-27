@@ -1,0 +1,55 @@
+1. Phone creates, Mac sees
+  ok    task arrives
+  ok    section arrives
+  ok    my day flag arrives
+  ok    list, moved task and step arrive
+  ok    nothing pending on Mac
+2. Both edit the same task before syncing (different fields)
+  ok    phone keeps its rename and gets star, done and step
+  ok    after field merge: both devices identical
+3. Offline (airplane): edits are kept, then sent when the network is back
+scripts/e2e.sh: line 13:  5091 Terminated: 15          PORT=$PORT node test/local-server.mjs > "$TMP/server.log" 2>&1
+  ok    three changes wait while offline
+  ok    pending changes survive an app restart
+  ok    everything sent after reconnect
+  ok    Mac receives airplane edits
+  ok    after offline period: both devices identical
+4. One device deletes, the other edits the same task later
+  ok    the later edit wins, task is not lost
+  ok    after delete vs edit: both devices identical
+5. Delete on one device reaches the other
+  ok    task removed on phone
+6. Change made through Claude (MCP) reaches devices
+  ok    task from Claude arrives
+  ok    Claude sees it completed
+7. Deleted task restored through Claude comes back
+  ok    restored task with its step is back
+  ok    after restore: both devices identical
+8. Server loses all data: devices put it back
+scripts/e2e.sh: line 13:  5463 Terminated: 15          PORT=$PORT node test/local-server.mjs > "$TMP/server.log" 2>&1
+  ok    server refilled from a device, nothing lost
+  ok    after server reset: both devices identical
+9. Local file damaged: the app falls back to its daily copy and catches up
+  ok    daily local copy exists
+  ok    phone recovers everything
+10. Rapid alternation: edit on phone, immediately continue on Mac
+  ok    all five created on phone are done after Mac
+  ok    after alternation: both devices identical
+scripts/e2e.sh: line 13:  5745 Terminated: 15          PORT=$PORT node test/local-server.mjs > "$TMP/server.log" 2>&1
+
+Final state:
+list|Работа
+task|Из Claude|Tasks|done,myday|шаг 1
+task|Овсяное молоко|Tasks|done,important|Проверить срок
+task|Отчёт|Работа||Собрать цифры
+task|Переименована позже|Tasks||
+task|Позвонить|Tasks|done,myday|
+task|С мака офлайн|Tasks||
+task|Сделать|Tasks|section|
+task|Чередование 1|Tasks|done|
+task|Чередование 2|Tasks|done|
+task|Чередование 3|Tasks|done|
+task|Чередование 4|Tasks|done|
+task|Чередование 5|Tasks|done|
+pending|0
+E2E: ALL PASSED

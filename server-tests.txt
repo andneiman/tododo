@@ -1,0 +1,18 @@
+backend postgres run
+ok   imported blob state, epoch kept
+ok   server time returned
+ok   push not echoed
+ok   mac pulls it
+ok   field merge: rename + star + done all survive, merged echoed to phone
+ok   mac gets merged
+ok   clearing a field propagates
+ok   claude reopen reaches phone
+ok   deleted task listed
+ok   undelete
+ok   undeleted task comes back to phone
+ok   daily backup exists: {"day":"2026-11-27","taken_at":"2026-11-27T11:57:56.763Z","tasks_and_lists":2}
+ok   list deleted
+ok   restore_backup brings back list+task+step: {"day":"2026-11-27","brought_back":3,"reverted":0}
+ok   restored list has task with step
+ok   concurrent writes: unique seqs, cursor = max
+ok   all 20 concurrent items stored
