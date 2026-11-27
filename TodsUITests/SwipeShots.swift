@@ -18,21 +18,23 @@ final class SwipeShots: XCTestCase {
         add(a)
     }
 
-    /// Task details: swipe a step left (Show / Hide) and right (Delete).
-    func testStepSwipes() {
-        var app = launch("detail")
+    /// Task details: swipe a step left (delete + eye).
+    func testStepSwipe() {
+        let app = launch("detail")
         let step = app.staticTexts["Book a room"].exists ? app.staticTexts["Book a room"] : app.textFields["Book a room"]
         XCTAssertTrue(step.waitForExistence(timeout: 10))
         step.swipeLeft()
         sleep(1)
         shoot(app, "step-swipe-left")
+    }
 
-        app.terminate()
-        app = launch("detail")
-        let step2 = app.staticTexts["Book a room"].exists ? app.staticTexts["Book a room"] : app.textFields["Book a room"]
-        XCTAssertTrue(step2.waitForExistence(timeout: 10))
-        step2.swipeRight()
+    /// My Day: swipe a task left (delete + star).
+    func testTaskSwipe() {
+        let app = launch("myday")
+        let task = app.staticTexts["Pay the heating bill"]
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        task.swipeLeft()
         sleep(1)
-        shoot(app, "step-swipe-right")
+        shoot(app, "task-swipe-left")
     }
 }

@@ -286,15 +286,20 @@ private struct StepRow: View {
             Button("Delete Step", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
         #endif
-        // iPhone: swipe left — show / hide under the task in the list; swipe right — delete.
-        .swipeActions(edge: .trailing) {
-            Button(step.isImportant ? "Hide" : "Show", systemImage: step.isImportant ? "eye.slash" : "eye") {
+        // Like Messages: swipe left shows two round icon buttons — delete (red, outermost) and the eye.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                store.deleteStep(step.id)
+            } label: {
+                Label("Delete", systemImage: "trash.fill").labelStyle(.iconOnly)
+            }
+            Button {
                 withAnimation(.snappy) { store.toggleStepStar(step.id) }
+            } label: {
+                Label(step.isImportant ? "Hide" : "Show", systemImage: step.isImportant ? "eye.slash.fill" : "eye.fill")
+                    .labelStyle(.iconOnly)
             }
             .tint(Color(white: 0.35))
-        }
-        .swipeActions(edge: .leading) {
-            Button("Delete", systemImage: "trash", role: .destructive) { store.deleteStep(step.id) }
         }
     }
 
