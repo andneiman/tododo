@@ -189,9 +189,7 @@ struct TaskListView: View {
             .contentShape(Rectangle())
             .onTapGesture { editingSection = item.id }
             #endif
-            .swipeActions(edge: .trailing) {
-                Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.taskLeave) { store.deleteTask(item.id) } }
-            }
+            // No swipe on section headers: delete lives in the section editor (iPhone) or the right-click menu (Mac).
         } else {
             TaskRow(task: item, scope: scope, onEditTitle: { selectedTask = item.id })
                 .selectable(item.id, selection: $selectedTask)
