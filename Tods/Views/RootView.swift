@@ -89,7 +89,7 @@ extension String: @retroactive Identifiable {
 import UIKit
 
 extension Notification.Name {
-    static let deviceDidShake = Notification.Name("TododoDeviceDidShake")
+    static let deviceDidShake = Notification.Name("TodsDeviceDidShake")
 }
 
 extension UIWindow {

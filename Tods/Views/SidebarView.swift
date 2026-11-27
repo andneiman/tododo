@@ -47,7 +47,7 @@ struct SidebarView: View {
         #if os(macOS)
         .safeAreaInset(edge: .bottom, spacing: 0) { macBottomBar }
         #else
-        .navigationTitle("Tododo")
+        .navigationTitle("Tods")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

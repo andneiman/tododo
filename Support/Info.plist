@@ -9,12 +9,13 @@
 			<string>com.andneiman.tododo</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>tods</string>
 				<string>tododo</string>
 			</array>
 		</dict>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Tododo uses Face ID to keep your tasks private.</string>
+	<string>Tods uses Face ID to keep your tasks private.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSAppTransportSecurity</key>

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7D0000000000000000000006"
-               BuildableName = "Tododo.app"
-               BlueprintName = "Tododo"
-               ReferencedContainer = "container:Tododo.xcodeproj">
+               BuildableName = "Tods.app"
+               BlueprintName = "Tods"
+               ReferencedContainer = "container:Tods.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -43,9 +43,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7D0000000000000000000006"
-            BuildableName = "Tododo.app"
-            BlueprintName = "Tododo"
-            ReferencedContainer = "container:Tododo.xcodeproj">
+            BuildableName = "Tods.app"
+            BlueprintName = "Tods"
+            ReferencedContainer = "container:Tods.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -60,9 +60,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7D0000000000000000000006"
-            BuildableName = "Tododo.app"
-            BlueprintName = "Tododo"
-            ReferencedContainer = "container:Tododo.xcodeproj">
+            BuildableName = "Tods.app"
+            BlueprintName = "Tods"
+            ReferencedContainer = "container:Tods.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,16 +1,16 @@
 import SwiftUI
 
 @main
-struct TododoApp: App {
+struct TodsApp: App {
     private static let sharedStore = Store()
-    @State private var store = TododoApp.sharedStore
+    @State private var store = TodsApp.sharedStore
     @State private var lock = AppLock()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
         #if DEBUG
         if E2E.isActive {
-            let store = TododoApp.sharedStore
+            let store = TodsApp.sharedStore
             Task { @MainActor in await E2E.run(store) }
         }
         #endif
@@ -38,7 +38,7 @@ struct TododoApp: App {
             .task { await store.runSyncLoop() }
             .task { await lock.unlockOnLaunch() }
             .onOpenURL { url in
-                // A connection link (tododo://setup?...) configures sync in one step.
+                // A connection link (tods://setup?... — the old tododo:// links work too) configures sync in one step.
                 if Config.applySetup(url.absoluteString) { store.becameActive() }
             }
         }

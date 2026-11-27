@@ -7,7 +7,7 @@ import { tools } from '../../lib/tools.js';
 const READ_ONLY = new Set(['get_overview', 'list_tasks', 'search_tasks', 'task_history']);
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS =
-  'Personal to-do app "Tododo" (Microsoft To Do style). Lists hold tasks; tasks can have steps, an "important" flag and a "My Day" flag. ' +
+  'Personal to-do app "Tods" (Microsoft To Do style). Lists hold tasks; tasks can have steps, an "important" flag and a "My Day" flag. ' +
   'My Day does not reset overnight: tasks stay until completed or removed. Section dividers (e.g. "To Do", "Think About") are special items that visually group the tasks below them. ' +
   'There are no due dates or reminders. Changes sync to the user\'s devices within seconds.';
 
@@ -21,7 +21,7 @@ async function rpc(msg) {
       return ok({
         protocolVersion: VERSIONS.includes(params?.protocolVersion) ? params.protocolVersion : VERSIONS[1],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'tododo', title: 'Tododo', version: '1.0.0' },
+        serverInfo: { name: 'tods', title: 'Tods', version: '1.0.0' },
         instructions: INSTRUCTIONS,
       });
     case 'ping':

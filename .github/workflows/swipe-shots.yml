@@ -14,7 +14,7 @@ jobs:
         run: |
           NAME=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9] Pro \(" | head -1 | sed -E 's/^ *([^(]+) \(.*/\1/' | sed 's/ *$//')
           echo "Simulator: $NAME"
-          xcodebuild test -project Tododo.xcodeproj -scheme TododoUITests \
+          xcodebuild test -project Tods.xcodeproj -scheme TodsUITests \
             -destination "platform=iOS Simulator,name=$NAME" -resultBundlePath R.xcresult \
             CODE_SIGNING_ALLOWED=NO > test.log 2>&1 || { grep -nE "error|failed|Fail" test.log | head -60; }
           tail -5 test.log

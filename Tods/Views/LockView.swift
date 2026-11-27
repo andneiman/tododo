@@ -10,7 +10,7 @@ struct LockView: View {
                 .font(.system(size: 30, weight: .regular))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
-            Text("Tododo Is Locked")
+            Text("Tods Is Locked")
                 .font(.title2.weight(.semibold))
             Text("Your tasks are private to you.")
                 .font(.subheadline)

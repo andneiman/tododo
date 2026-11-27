@@ -1,7 +1,7 @@
 import XCTest
 
 /// Real screenshots of gestures in the iPhone app (demo data, no account).
-/// Run: xcodebuild test -scheme TododoUITests -destination 'platform=iOS Simulator,name=…'
+/// Run: xcodebuild test -scheme TodsUITests -destination 'platform=iOS Simulator,name=…'
 /// Each screenshot is attached to the test result (exported in CI).
 final class SwipeShots: XCTestCase {
     private func launch(_ screen: String) -> XCUIApplication {

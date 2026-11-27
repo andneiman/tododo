@@ -606,7 +606,7 @@ final class Store {
 
     private static var directory: URL {
         var dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Tododo", isDirectory: true)
+            .appendingPathComponent("Tododo", isDirectory: true)   // data folder keeps the old name
         #if DEBUG
         if let custom = ProcessInfo.processInfo.environment["TODODO_DIR"] { dir = URL(fileURLWithPath: custom, isDirectory: true) }
         #endif

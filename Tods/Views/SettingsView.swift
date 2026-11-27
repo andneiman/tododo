@@ -31,8 +31,8 @@ struct SettingsView: View {
     @ViewBuilder
     private var gated: some View {
         if lock.isLocked {
-            ContentUnavailableView("Tododo Is Locked", systemImage: "lock.fill",
-                                   description: Text("Unlock Tododo to change its settings."))
+            ContentUnavailableView("Tods Is Locked", systemImage: "lock.fill",
+                                   description: Text("Unlock Tods to change its settings."))
         } else {
             form
         }
@@ -62,7 +62,7 @@ struct SettingsView: View {
             } header: {
                 Text("Sync")
             } footer: {
-                Text("Tododo works fully offline. Changes upload as soon as you’re back online.")
+                Text("Tods works fully offline. Changes upload as soon as you’re back online.")
             }
 
             Section {
@@ -84,7 +84,7 @@ struct SettingsView: View {
                 Text("Connection")
             } footer: {
                 Text(setupFailed
-                     ? "That doesn’t look like a connection code. It starts with tododo://setup"
+                     ? "That doesn’t look like a connection code. It starts with tods://setup"
                      : "Open the connection link on this device, or paste it here.")
             }
 
@@ -106,8 +106,8 @@ struct SettingsView: View {
                 Text("Privacy")
             } footer: {
                 Text(AppLock.canAuthenticate
-                     ? "Only you can open Tododo on this device. It also locks when you lock your \(deviceName)."
-                     : "Set up a passcode on this device to lock Tododo.")
+                     ? "Only you can open Tods on this device. It also locks when you lock your \(deviceName)."
+                     : "Set up a passcode on this device to lock Tods.")
             }
 
             Section {

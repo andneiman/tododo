@@ -7,19 +7,19 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		7D0000000000000000000101 /* TododoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TododoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7D0000000000000000000001 /* Tododo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tododo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D0000000000000000000101 /* TodsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TodsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D0000000000000000000001 /* Tods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tods.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7D0000000000000000000102 /* TododoUITests */ = {
+		7D0000000000000000000102 /* TodsUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TododoUITests;
+			path = TodsUITests;
 			sourceTree = "<group>";
 		};
-		7D0000000000000000000002 /* Tododo */ = {
+		7D0000000000000000000002 /* Tods */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Tododo;
+			path = Tods;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -30,7 +30,7 @@
 			containerPortal = 7D0000000000000000000009 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7D0000000000000000000006;
-			remoteInfo = Tododo;
+			remoteInfo = Tods;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -55,8 +55,8 @@
 		7D0000000000000000000004 = {
 			isa = PBXGroup;
 			children = (
-				7D0000000000000000000002 /* Tododo */,
-				7D0000000000000000000102 /* TododoUITests */,
+				7D0000000000000000000002 /* Tods */,
+				7D0000000000000000000102 /* TodsUITests */,
 				7D0000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -64,8 +64,8 @@
 		7D0000000000000000000005 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7D0000000000000000000001 /* Tododo.app */,
-				7D0000000000000000000101 /* TododoUITests.xctest */,
+				7D0000000000000000000001 /* Tods.app */,
+				7D0000000000000000000101 /* TodsUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,9 +73,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7D0000000000000000000106 /* TododoUITests */ = {
+		7D0000000000000000000106 /* TodsUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7D000000000000000000010C /* Build configuration list for PBXNativeTarget "TododoUITests" */;
+			buildConfigurationList = 7D000000000000000000010C /* Build configuration list for PBXNativeTarget "TodsUITests" */;
 			buildPhases = (
 				7D0000000000000000000104 /* Sources */,
 				7D0000000000000000000103 /* Frameworks */,
@@ -87,18 +87,18 @@
 				7D0000000000000000000107 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				7D0000000000000000000102 /* TododoUITests */,
+				7D0000000000000000000102 /* TodsUITests */,
 			);
-			name = TododoUITests;
+			name = TodsUITests;
 			packageProductDependencies = (
 			);
-			productName = TododoUITests;
-			productReference = 7D0000000000000000000101 /* TododoUITests.xctest */;
+			productName = TodsUITests;
+			productReference = 7D0000000000000000000101 /* TodsUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		7D0000000000000000000006 /* Tododo */ = {
+		7D0000000000000000000006 /* Tods */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7D000000000000000000000C /* Build configuration list for PBXNativeTarget "Tododo" */;
+			buildConfigurationList = 7D000000000000000000000C /* Build configuration list for PBXNativeTarget "Tods" */;
 			buildPhases = (
 				7D0000000000000000000007 /* Sources */,
 				7D0000000000000000000003 /* Frameworks */,
@@ -109,13 +109,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				7D0000000000000000000002 /* Tododo */,
+				7D0000000000000000000002 /* Tods */,
 			);
-			name = Tododo;
+			name = Tods;
 			packageProductDependencies = (
 			);
-			productName = Tododo;
-			productReference = 7D0000000000000000000001 /* Tododo.app */;
+			productName = Tods;
+			productReference = 7D0000000000000000000001 /* Tods.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -137,7 +137,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 7D000000000000000000000B /* Build configuration list for PBXProject "Tododo" */;
+			buildConfigurationList = 7D000000000000000000000B /* Build configuration list for PBXProject "Tods" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -152,8 +152,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7D0000000000000000000006 /* Tododo */,
-				7D0000000000000000000106 /* TododoUITests */,
+				7D0000000000000000000006 /* Tods */,
+				7D0000000000000000000106 /* TodsUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -195,7 +195,7 @@
 /* Begin PBXTargetDependency section */
 		7D0000000000000000000107 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7D0000000000000000000006 /* Tododo */;
+			target = 7D0000000000000000000006 /* Tods */;
 			targetProxy = 7D0000000000000000000108 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -214,7 +214,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Tododo;
+				TEST_TARGET_NAME = Tods;
 			};
 			name = Debug;
 		};
@@ -231,7 +231,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Tododo;
+				TEST_TARGET_NAME = Tods;
 			};
 			name = Release;
 		};
@@ -295,7 +295,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Tododo;
+				INFOPLIST_KEY_CFBundleDisplayName = Tods;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -330,7 +330,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Tododo;
+				INFOPLIST_KEY_CFBundleDisplayName = Tods;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -357,7 +357,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7D000000000000000000010C /* Build configuration list for PBXNativeTarget "TododoUITests" */ = {
+		7D000000000000000000010C /* Build configuration list for PBXNativeTarget "TodsUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7D0000000000000000000109 /* Debug */,
@@ -366,7 +366,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7D000000000000000000000B /* Build configuration list for PBXProject "Tododo" */ = {
+		7D000000000000000000000B /* Build configuration list for PBXProject "Tods" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7D000000000000000000000D /* Debug */,
@@ -375,7 +375,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7D000000000000000000000C /* Build configuration list for PBXNativeTarget "Tododo" */ = {
+		7D000000000000000000000C /* Build configuration list for PBXNativeTarget "Tods" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7D000000000000000000000F /* Debug */,

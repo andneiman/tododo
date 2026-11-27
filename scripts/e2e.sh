@@ -1,6 +1,6 @@
 #!/bin/bash
 # End-to-end sync test: two real app processes ("phone" A and "mac" B) against a local server.
-# Usage: scripts/e2e.sh path/to/Tododo.app/Contents/MacOS/Tododo
+# Usage: scripts/e2e.sh path/to/Tods.app/Contents/MacOS/Tods
 set -u
 BIN="$1"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

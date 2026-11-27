@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-/// Where to sync. Set once with a connection link (`tododo://setup?url=…&token=…`),
+/// Where to sync. Set once with a connection link (`tods://setup?url=…&token=…`),
 /// or shipped in a local, git-ignored Secrets.plist.
 struct Config: Equatable {
     var url: URL
@@ -28,7 +28,7 @@ struct Config: Equatable {
     @discardableResult
     static func applySetup(_ raw: String) -> Bool {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let parts = URLComponents(string: text), parts.scheme == "tododo", parts.host == "setup" else { return false }
+        guard let parts = URLComponents(string: text), ["tods", "tododo"].contains(parts.scheme ?? ""), parts.host == "setup" else { return false }
         let items = parts.queryItems ?? []
         let url = items.first { $0.name == "url" }?.value
         let token = items.first { $0.name == "token" }?.value

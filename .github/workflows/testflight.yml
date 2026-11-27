@@ -33,11 +33,11 @@ jobs:
           KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s\n' "$ASC_KEY_P8" > "$KEY"
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
-          xcodebuild -project Tododo.xcodeproj -scheme Tododo -destination 'generic/platform=iOS' \
-            -configuration Release -archivePath "$RUNNER_TEMP/Tododo.xcarchive" archive \
+          xcodebuild -project Tods.xcodeproj -scheme Tods -destination 'generic/platform=iOS' \
+            -configuration Release -archivePath "$RUNNER_TEMP/Tods.xcarchive" archive \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" "${AUTH[@]}" | tail -40
           /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" Support/ExportOptions.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :teamID $APPLE_TEAM_ID" Support/ExportOptions.plist
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tododo.xcarchive" \
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tods.xcarchive" \
             -exportOptionsPlist Support/ExportOptions.plist -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" | tail -40
           rm -f "$KEY"
       - name: Archive and upload (macOS)
@@ -47,13 +47,13 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$KEY"
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           # The everyday CI Mac build is ad-hoc signed and unsandboxed; the TestFlight one is signed by Apple and sandboxed.
-          sed -i '' '/CODE_SIGN_IDENTITY\[sdk=macosx\*\]/d' Tododo.xcodeproj/project.pbxproj
-          xcodebuild -project Tododo.xcodeproj -scheme Tododo -destination 'generic/platform=macOS' \
-            -configuration Release -archivePath "$RUNNER_TEMP/Tododo-mac.xcarchive" archive \
+          sed -i '' '/CODE_SIGN_IDENTITY\[sdk=macosx\*\]/d' Tods.xcodeproj/project.pbxproj
+          xcodebuild -project Tods.xcodeproj -scheme Tods -destination 'generic/platform=macOS' \
+            -configuration Release -archivePath "$RUNNER_TEMP/Tods-mac.xcarchive" archive \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            CODE_SIGN_ENTITLEMENTS=Support/Tododo-mac.entitlements \
+            CODE_SIGN_ENTITLEMENTS=Support/Tods-mac.entitlements \
             ENABLE_HARDENED_RUNTIME=YES "${AUTH[@]}" | tail -40
           /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" Support/ExportOptions.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :teamID $APPLE_TEAM_ID" Support/ExportOptions.plist
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tododo-mac.xcarchive" \
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Tods-mac.xcarchive" \
             -exportOptionsPlist Support/ExportOptions.plist -exportPath "$RUNNER_TEMP/export-mac" "${AUTH[@]}" | tail -40
           rm -f "$KEY"
