@@ -90,12 +90,27 @@ struct SidebarView: View {
                 .onMove { moveLists(inGroup: nil, from: $0, to: $1) }
         }
         ForEach(store.groups) { group in
-            Section(isExpanded: expanded(group.id)) {
-                ForEach(store.lists(inGroup: group.id)) { listRow($0) }
-                    .onMove { moveLists(inGroup: group.id, from: $0, to: $1) }
+            Section {
+                if !collapsed.contains(group.id) {
+                    ForEach(store.lists(inGroup: group.id)) { listRow($0) }
+                        .onMove { moveLists(inGroup: group.id, from: $0, to: $1) }
+                }
             } header: {
-                groupHeader(group)
-                    .contentShape(Rectangle())
+                // Own header (not the native fold) so the chevron stays gray.
+                HStack {
+                    groupHeader(group)
+                    Spacer()
+                    Image(systemName: collapsed.contains(group.id) ? "chevron.right" : "chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard editingID != group.id else { return }
+                    withAnimation(.snappy) {
+                        if collapsed.contains(group.id) { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
+                    }
+                }
                     .contextMenu {
                         Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
                         Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
