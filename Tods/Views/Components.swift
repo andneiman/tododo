@@ -198,29 +198,19 @@ struct TaskRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onChange(of: task.isDone) { _, _ in completing = false }
-        #if os(iOS)
-        // iPhone, like Messages: swipe left shows two round icon buttons — delete (red, outermost) and star.
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                withAnimation(.taskLeave) { store.deleteTask(task.id) }
-            } label: {
-                Label("Delete", systemImage: "trash.fill").labelStyle(.iconOnly)
-            }
-            Button {
+        .swipeActions(edge: .trailing) {
+            #if os(iOS)
+            // iPhone: swiping left stars the task (and lifts it to the top); delete lives in the long-press menu.
+            Button(task.isImportant ? "Unstar" : "Star", systemImage: task.isImportant ? "star.slash" : "star.fill") {
                 store.star(task.id)
-            } label: {
-                Label(task.isImportant ? "Unstar" : "Star", systemImage: task.isImportant ? "star.slash.fill" : "star.fill")
-                    .labelStyle(.iconOnly)
             }
             .tint(.orange)
-        }
-        #else
-        .swipeActions(edge: .trailing) {
+            #else
             Button("Delete", systemImage: "trash", role: .destructive) {
                 withAnimation(.taskLeave) { store.deleteTask(task.id) }
             }
+            #endif
         }
-        #endif
         .swipeActions(edge: .leading) {
             Button(task.isMyDay ? "Remove from My Day" : "Add to My Day", systemImage: "sun.max") {
                 store.myDay(task.id)
