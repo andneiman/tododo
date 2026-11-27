@@ -82,6 +82,29 @@ struct SidebarView: View {
         // "Tasks" is just the first list: always there, can't be deleted.
         // Lists and group titles are one list, so a list can be dragged anywhere —
         // up or down, or under another group's title to move it into that group.
+        #if os(iOS)
+        // iPhone: each group is its own block next to "Lists", with a native fold chevron.
+        Section("Lists") {
+            inboxRow
+            ForEach(store.lists(inGroup: nil)) { listRow($0) }
+                .onMove { moveLists(inGroup: nil, from: $0, to: $1) }
+        }
+        ForEach(store.groups) { group in
+            Section(isExpanded: expanded(group.id)) {
+                ForEach(store.lists(inGroup: group.id)) { listRow($0) }
+                    .onMove { moveLists(inGroup: group.id, from: $0, to: $1) }
+            } header: {
+                groupHeader(group)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
+                        Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
+                        Divider()
+                        Button("Delete Group", systemImage: "trash", role: .destructive) { store.deleteGroup(group.id) }
+                    }
+            }
+        }
+        #else
         Section("Lists") {
             inboxRow
             ForEach(rows) { row in
@@ -91,6 +114,16 @@ struct SidebarView: View {
                 }
             }
             .onMove(perform: moveRows)
+        }
+        #endif
+    }
+
+    /// Reorder lists inside one block (ungrouped or a group).
+    private func moveLists(inGroup groupID: String?, from source: IndexSet, to destination: Int) {
+        var items = store.lists(inGroup: groupID)
+        items.move(fromOffsets: source, toOffset: destination)
+        for (i, l) in items.enumerated() where l.data.position != Double(i + 1) {
+            store.placeList(l.id, inGroup: groupID, at: Double(i + 1))
         }
     }
 
