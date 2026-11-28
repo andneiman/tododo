@@ -328,7 +328,6 @@ struct SidebarView: View {
         }
     }
 
-    @ViewBuilder
     #if os(iOS)
     private func groupHeaderLabel(_ group: Record) -> some View {
         HStack {
@@ -344,6 +343,7 @@ struct SidebarView: View {
     }
     #endif
 
+    @ViewBuilder
     private func groupHeader(_ group: Record) -> some View {
         Group {
             if editingID == group.id {
