@@ -97,26 +97,26 @@ struct SidebarView: View {
                 }
             } header: {
                 // Own header (not the native fold) so the chevron stays gray.
-                HStack {
-                    groupHeader(group)
-                    Spacer()
-                    Image(systemName: collapsed.contains(group.id) ? "chevron.right" : "chevron.down")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard editingID != group.id else { return }
-                    withAnimation(.snappy) {
-                        if collapsed.contains(group.id) { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
-                    }
-                }
-                    .contextMenu {
+                // Tap folds the group; long press opens its menu (a Menu with a primary action does both).
+                if editingID == group.id {
+                    groupHeaderLabel(group)
+                } else {
+                    Menu {
                         Button("Rename Group", systemImage: "pencil") { startEditing(group.id, text: group.title) }
                         Button("New List in Group", systemImage: "plus") { newList(in: group.id) }
                         Divider()
                         Button("Delete Group", systemImage: "trash", role: .destructive) { store.deleteGroup(group.id) }
+                    } label: {
+                        groupHeaderLabel(group)
+                    } primaryAction: {
+                        withAnimation(.snappy) {
+                            if collapsed.contains(group.id) { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
+                        }
                     }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("group-\(group.title)")
+                }
             }
         }
         #else
@@ -329,6 +329,21 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
+    #if os(iOS)
+    private func groupHeaderLabel(_ group: Record) -> some View {
+        HStack {
+            groupHeader(group)
+                .foregroundStyle(.primary)
+            Spacer()
+            Image(systemName: collapsed.contains(group.id) ? "chevron.right" : "chevron.down")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+    }
+    #endif
+
     private func groupHeader(_ group: Record) -> some View {
         Group {
             if editingID == group.id {
@@ -390,7 +405,13 @@ struct SidebarView: View {
     private func startEditing(_ id: String, text: String) {
         editText = text
         editingID = id
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { editFocused = true }
+        // iPhone: wait for the long-press menu to close, or the field can't take focus.
+        #if os(iOS)
+        let delay = 0.4
+        #else
+        let delay = 0.05
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { editFocused = true }
     }
 
     private func commitEdit() {

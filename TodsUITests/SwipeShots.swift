@@ -35,4 +35,21 @@ final class SwipeShots: XCTestCase {
         sleep(1)
         shoot(app, "step-swipe-right")
     }
+
+    /// Sidebar: long press a group header opens its menu; Rename puts the name in edit mode.
+    func testGroupMenu() {
+        let app = launch("home")
+        let header = app.buttons["group-Projects"]
+        XCTAssertTrue(header.waitForExistence(timeout: 10))
+        header.press(forDuration: 1.0)
+        sleep(1)
+        shoot(app, "group-long-press")
+        let rename = app.buttons["Rename Group"]
+        XCTAssertTrue(rename.waitForExistence(timeout: 5))
+        rename.tap()
+        sleep(2)
+        app.typeText(" 2")
+        sleep(1)
+        shoot(app, "group-rename")
+    }
 }
